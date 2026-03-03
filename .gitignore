@@ -20,6 +20,10 @@ yarn-error.log
 
 # build
 build
+main.js
+
+# Obsidian plugin data (user-specific settings)
+data.json
 
 # testing
 coverage
