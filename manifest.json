@@ -1,12 +1,11 @@
 {
-    "id": "obsidian-spaced-repetition",
-    "name": "Spaced Repetition",
-    "version": "1.13.7",
+    "id": "obsidian-spaced-repetition-custom",
+    "name": "Spaced Repetition (Custom)",
+    "version": "1.13.7-custom.1",
     "minAppVersion": "1.2.8",
-    "description": "Fight the forgetting curve by reviewing flashcards & entire notes.",
-    "author": "Stephen Mwangi",
-    "authorUrl": "https://github.com/st3v3nmw",
-    "helpUrl": "https://stephenmwangi.com/obsidian-spaced-repetition/",
-    "isDesktopOnly": false,
-    "fundingUrl": "https://ko-fi.com/M4M44DEN6"
+    "description": "Fight the forgetting curve by reviewing flashcards & entire notes. Custom fork with mobile/layout fixes.",
+    "author": "Stephen Mwangi (forked by tk-pkm111)",
+    "authorUrl": "https://github.com/tk-pkm111",
+    "helpUrl": "https://github.com/tk-pkm111/obsidian-spaced-repetition-custom",
+    "isDesktopOnly": false
 }

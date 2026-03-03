@@ -100,6 +100,7 @@
 /* MARK: Modal */
 
 #sr-modal-view {
+
     & .modal-close-button,
     & .modal-header {
         display: none;
@@ -207,18 +208,18 @@
             color: #ffffff;
             padding: var(--size-4-1);
 
-            & > *:first-child {
+            &>*:first-child {
                 min-width: 10ch;
             }
 
-            & > *:last-child {
+            &>*:last-child {
                 min-width: 3ch;
                 text-align: right;
             }
         }
     }
 
-    & > hr {
+    &>hr {
         margin: 2px 0px;
     }
 
@@ -255,6 +256,28 @@
         padding: var(--size-4-1);
         text-align: center;
         color: #ffffff !important;
+    }
+}
+
+/* MARK: Custom - Deck row layout fix */
+
+.sr-deck-container .sr-tree-item-row {
+    align-items: center;
+}
+
+.sr-deck-container .sr-tree-stats-container {
+    position: relative !important;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* MARK: Custom - Mobile portrait SVG icon scaling */
+
+@media only screen and (orientation: portrait) {
+
+    .is-phone .sr-button svg.svg-icon,
+    .is-phone .sr-button svg {
+        transform: scale(3) !important;
     }
 }
 
@@ -396,8 +419,8 @@
         margin-top: 0;
     }
 
-    & .sr-content > ul,
-    & .sr-content > ol {
+    & .sr-content>ul,
+    & .sr-content>ol {
         padding-left: var(--size-4-6);
     }
 
@@ -426,8 +449,8 @@
             justify-content: center;
             gap: var(--size-4-2);
 
-            & > *:first-child,
-            & > *:last-child {
+            &>*:first-child,
+            &>*:last-child {
                 display: none;
             }
 
@@ -442,8 +465,8 @@
             display: inline-flex;
         }
 
-        & .sr-chosen-deck-info > *,
-        & .sr-current-deck-info > * {
+        & .sr-chosen-deck-info>*,
+        & .sr-current-deck-info>* {
             font-size: medium;
         }
 
@@ -454,6 +477,7 @@
 }
 
 @media only screen and (orientation: portrait) and (max-width: 650px) {
+
     .is-phone .sr-chosen-deck-name,
     .is-phone .sr-current-deck-name {
         max-width: 15ch;
@@ -461,6 +485,7 @@
 }
 
 @media only screen and (orientation: portrait) and (max-width: 550px) {
+
     .is-phone .sr-chosen-deck-name,
     .is-phone .sr-current-deck-name {
         max-width: 10ch;
@@ -481,6 +506,7 @@
 }
 
 @media only screen and (orientation: portrait) and (max-width: 440px) {
+
     .is-phone .sr-chosen-deck-name,
     .is-phone .sr-current-deck-name {
         max-width: 8ch;
@@ -488,6 +514,7 @@
 }
 
 @media only screen and (orientation: portrait) and (max-width: 410px) {
+
     .is-phone .sr-chosen-deck-name,
     .is-phone .sr-current-deck-name {
         max-width: 6ch;
@@ -613,7 +640,7 @@ body:not(.is-mobile) .sr-response-button.sr-easy-button::after {
     flex-direction: column;
     gap: var(--size-4-4);
 
-    .tree-item.mod-root > .tree-item-children {
+    .tree-item.mod-root>.tree-item-children {
         padding-inline-start: 0;
         margin-inline-start: 0;
         border-inline-start: none;
@@ -805,9 +832,9 @@ body:not(.is-phone) .sr-settings-page-content {
     gap: var(--size-4-4);
 }
 
-.sr-setting-override > .setting-item-name,
-.sr-setting-override > .setting-item-control,
-.sr-setting-override > .setting-item-info {
+.sr-setting-override>.setting-item-name,
+.sr-setting-override>.setting-item-control,
+.sr-setting-override>.setting-item-info {
     display: none;
 }
 
@@ -1179,13 +1206,11 @@ th.gridjs-th:last-child {
 
 .gridjs-loading-bar:after {
     animation: shimmer 2s infinite;
-    background-image: linear-gradient(
-        90deg,
-        hsla(0, 0%, 80%, 0),
-        hsla(0, 0%, 80%, 0.2) 20%,
-        hsla(0, 0%, 80%, 0.5) 60%,
-        hsla(0, 0%, 80%, 0)
-    );
+    background-image: linear-gradient(90deg,
+            hsla(0, 0%, 80%, 0),
+            hsla(0, 0%, 80%, 0.2) 20%,
+            hsla(0, 0%, 80%, 0.5) 60%,
+            hsla(0, 0%, 80%, 0));
     content: "";
     transform: translateX(-100%);
 }

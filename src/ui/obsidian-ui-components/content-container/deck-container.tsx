@@ -186,6 +186,8 @@ export class DeckContainer {
         const deckTreeSelf: HTMLElement = deckTree.createDiv(
             "tree-item-self tag-pane-tag is-clickable sr-tree-item-row",
         );
+        // CUSTOM: Fix deck layout - wrap so progress bar goes to its own line
+        deckTreeSelf.style.flexWrap = "wrap";
 
         const shouldBeInitiallyExpanded: boolean = this.settings.initiallyExpandAllSubdecksInTree;
         let collapsed = !shouldBeInitiallyExpanded;
@@ -199,11 +201,15 @@ export class DeckContainer {
         }
 
         const deckTreeInner: HTMLElement = deckTreeSelf.createDiv("tree-item-inner");
+        // CUSTOM: Allow deck name to fill available space
+        deckTreeInner.style.flexGrow = "1";
         const deckTreeInnerText: HTMLElement = deckTreeInner.createDiv("tag-pane-tag-text");
         deckTreeInnerText.innerHTML += <span class="tag-pane-tag-self">{deck.deckName}</span>;
 
         const deckTreeOuter: HTMLDivElement = deckTreeSelf.createDiv();
-        deckTreeOuter.addClasses(["tree-item-flair-outer", "sr-tree-stats-container"]);
+        // CUSTOM: Removed tree-item-flair-outer to prevent absolute positioning
+        deckTreeOuter.addClasses(["sr-tree-stats-container"]);
+        deckTreeOuter.style.position = "static";
 
         const deckStats = this.reviewSequencer.getDeckStats(deck.getTopicPath());
         this._createStats(deckStats, deckTreeOuter);
@@ -268,12 +274,13 @@ export class DeckContainer {
 
         statsContainer.ariaLabel = statsLable;
 
+        // CUSTOM: Removed tree-item-flair to prevent absolute positioning
         statsContainer.addClasses([
             "tag-pane-tag-count",
-            "tree-item-flair",
             "sr-tree-stats-count",
             statsClass,
         ]);
+        statsContainer.style.position = "static";
 
         statsContainer.setText(statsNumber.toString());
     }
