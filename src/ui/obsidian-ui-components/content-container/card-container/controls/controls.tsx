@@ -8,6 +8,7 @@ import ResetButtonComponent from "src/ui/obsidian-ui-components/content-containe
 import SkipButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/skip-button";
 import ModalCloseButtonComponent from "src/ui/obsidian-ui-components/content-container/modal-close-button";
 import EmulatedPlatform from "src/utils/platform-detector";
+import PreviousCardButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/previous-card-button";
 
 export default class ControlsComponent {
     public controls: HTMLDivElement;
@@ -16,6 +17,7 @@ export default class ControlsComponent {
     public editButton: EditButtonComponent;
     public resetButton: ResetButtonComponent;
     public infoButton: CardInfoButtonComponent;
+    public previousCardButton: PreviousCardButtonComponent;
     public skipButton: SkipButtonComponent;
 
     constructor(
@@ -26,6 +28,7 @@ export default class ControlsComponent {
         processReview: (response: ReviewResponse) => void,
         displayCurrentCardInfoNotice: () => void,
         skipCurrentCard: () => void,
+        goToPreviousCard: () => void,
         closeModal?: () => void,
     ) {
         this.controls = container.createDiv();
@@ -56,6 +59,13 @@ export default class ControlsComponent {
             () => displayCurrentCardInfoNotice(),
             EmulatedPlatform().isPhone || Platform.isPhone ? ["mod-raised"] : undefined,
         );
+
+        this.previousCardButton = new PreviousCardButtonComponent(
+            this.controls,
+            () => goToPreviousCard(),
+            EmulatedPlatform().isPhone || Platform.isPhone ? ["mod-raised"] : undefined,
+        );
+        this.previousCardButton.setDisabled(true);
 
         this.skipButton = new SkipButtonComponent(
             this.controls,

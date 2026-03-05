@@ -31,6 +31,7 @@ export interface SRSettings {
     autoNextNote: boolean;
     disableFileMenuReviewOptions: boolean;
     maxNDaysNotesReviewQueue: number;
+    deckOrder: string[];
 
     // UI preferences
     showRibbonIcon: boolean;
@@ -95,6 +96,7 @@ export const DEFAULT_SETTINGS: SRSettings = {
     autoNextNote: false,
     disableFileMenuReviewOptions: false,
     maxNDaysNotesReviewQueue: 365,
+    deckOrder: [],
 
     // UI settings
     showRibbonIcon: true,

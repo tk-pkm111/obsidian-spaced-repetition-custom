@@ -59,6 +59,13 @@ export class CardContainer {
     private editClickHandler: () => void;
     private closeModal: () => void | undefined;
 
+    // History of skipped cards (for the "previous card" button)
+    private _cardHistory: Array<{
+        card: Card;
+        question: Question;
+        note: Note;
+    }> = [];
+
     constructor(
         app: App,
         plugin: SRPlugin,
@@ -102,6 +109,7 @@ export class CardContainer {
             (response: ReviewResponse) => this._processReview(response),
             () => this._displayCurrentCardInfoNotice(),
             () => this._skipCurrentCard(),
+            () => this._goToPreviousCard(),
             this.closeModal ? this.closeModal.bind(this) : undefined,
         );
 
@@ -194,7 +202,7 @@ export class CardContainer {
 
     // #region -> Functions & helpers
 
-    private async _drawContent() {
+    private async _drawContent(skipAnimation = false) {
         this.controls.resetButton.disabled = true;
 
         // Update current deck info
@@ -209,6 +217,14 @@ export class CardContainer {
         }
 
         this._updateInfoBar(this.chosenDeck, this.currentDeck);
+
+        // Trigger flip animation
+        if (!skipAnimation) {
+            this.content.removeClass("sr-flip-animating");
+            // Force reflow so the animation re-triggers
+            void this.content.offsetWidth;
+            this.content.addClass("sr-flip-animating");
+        }
 
         // Update card content
         this.content.empty();
@@ -255,6 +271,10 @@ export class CardContainer {
         }
         this.lastPressed = timeNow;
 
+        // Clear card history on review — can't go back past a graded card
+        this._cardHistory = [];
+        this.controls.previousCardButton.setDisabled(true);
+
         await this.reviewSequencer.processReview(response);
         await this._showNextCard();
     }
@@ -267,8 +287,49 @@ export class CardContainer {
     // #region -> Controls
 
     private async _skipCurrentCard(): Promise<void> {
+        // Save to history before skipping
+        this._cardHistory.push({
+            card: this._currentCard,
+            question: this._currentQuestion,
+            note: this._currentNote,
+        });
+        this.controls.previousCardButton.setDisabled(false);
+
         this.reviewSequencer.skipCurrentCard();
         await this._showNextCard();
+    }
+
+    private async _goToPreviousCard(): Promise<void> {
+        const prev = this._cardHistory.pop();
+        if (!prev) return;
+
+        // Update the previous button state
+        this.controls.previousCardButton.setDisabled(this._cardHistory.length === 0);
+
+        // Move the current card to the end of the queue (skip it)
+        this.reviewSequencer.skipCurrentCard();
+
+        // Re-render the historical card's content directly
+        this.mode = FlashcardMode.Front;
+        this.content.empty();
+        this.content.removeClass("sr-flip-animating");
+        void this.content.offsetWidth;
+        this.content.addClass("sr-flip-animating");
+
+        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+            this.app,
+            this.plugin,
+            prev.note.filePath,
+        );
+        await wrapper.renderMarkdownWrapper(
+            prev.card.front.trimStart(),
+            this.content,
+            prev.question.questionText.textDirection,
+        );
+        this.content.scrollTop = 0;
+        this.response.resetResponseButtons();
+        this.controls.resetButton.disabled = true;
+        this._setupClozeInputListeners();
     }
 
     private _displayCurrentCardInfoNotice() {
@@ -305,7 +366,7 @@ export class CardContainer {
 
         this.clozeInputs.forEach((input) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            input.addEventListener("change", (e) => {});
+            input.addEventListener("change", (e) => { });
         });
     }
 

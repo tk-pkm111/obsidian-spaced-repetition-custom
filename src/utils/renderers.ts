@@ -32,6 +32,19 @@ export class RenderMarkdownWrapper {
         } else el = containerEl;
         MarkdownRenderer.render(this.app, markdownString, el, this.notePath, this.plugin);
 
+        // Enable WikiLink navigation: clicking [[Note]] opens the note in Obsidian
+        el.findAll("a.internal-link").forEach((linkEl) => {
+            linkEl.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const href =
+                    linkEl.getAttribute("data-href") || linkEl.getAttribute("href") || "";
+                if (href) {
+                    this.app.workspace.openLinkText(href, this.notePath, false);
+                }
+            });
+        });
+
         el.findAll(".internal-embed").forEach((el) => {
             const link = this.parseLink(el.getAttribute("src"));
 
@@ -84,10 +97,10 @@ export class RenderMarkdownWrapper {
                     el.addEventListener(
                         "click",
                         (ev) =>
-                            ((ev.target as HTMLElement).style.minWidth =
-                                (ev.target as HTMLElement).style.minWidth === "100%"
-                                    ? null
-                                    : "100%"),
+                        ((ev.target as HTMLElement).style.minWidth =
+                            (ev.target as HTMLElement).style.minWidth === "100%"
+                                ? null
+                                : "100%"),
                     );
                 },
             );
