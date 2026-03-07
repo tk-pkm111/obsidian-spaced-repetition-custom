@@ -19,21 +19,29 @@ export class FlashcardEditModal extends Modal {
     private rejectPromise: (reason?: any) => void;
     private didSaveChanges = false;
     private readonly modalText: string;
+    private readonly modalTitle: string;
     private textDirection: TextDirection;
 
     public static Prompt(
         app: App,
         placeholder: string,
         textDirection: TextDirection,
+        title?: string,
     ): Promise<string> {
-        const newPromptModal = new FlashcardEditModal(app, placeholder, textDirection);
+        const newPromptModal = new FlashcardEditModal(app, placeholder, textDirection, title);
         return newPromptModal.waitForClose;
     }
 
-    constructor(app: App, existingText: string, textDirection: TextDirection) {
+    constructor(
+        app: App,
+        existingText: string,
+        textDirection: TextDirection,
+        title?: string,
+    ) {
         super(app);
 
         this.modalText = existingText;
+        this.modalTitle = title ?? t("EDIT_CARD");
         this.changedText = existingText;
         this.textDirection = textDirection;
 
@@ -57,7 +65,7 @@ export class FlashcardEditModal extends Modal {
         this.contentEl.addClass("sr-edit-view");
 
         this.title = this.contentEl.createDiv();
-        this.title.setText(t("EDIT_CARD"));
+        this.title.setText(this.modalTitle);
         this.title.addClass("sr-title");
 
         this.textArea = this.contentEl.createEl("textarea");

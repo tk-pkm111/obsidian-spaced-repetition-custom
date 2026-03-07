@@ -6,7 +6,7 @@ import { Question, QuestionText } from "src/card/questions/question";
 import { IQuestionPostponementList } from "src/card/questions/question-postponement-list";
 import { TICKS_PER_DAY } from "src/constants";
 import { DataStore } from "src/data-stores/base/data-store";
-import { CardListType, Deck } from "src/deck/deck";
+import { CardListType, Deck, DeckTreeFilter } from "src/deck/deck";
 import { IDeckTreeIterator } from "src/deck/deck-tree-iterator";
 import { TopicPath } from "src/deck/topic-path";
 import { DueDateHistogram } from "src/due-date-histogram";
@@ -24,6 +24,7 @@ export interface IFlashcardReviewSequencer {
 
     setDeckTree(originalDeckTree: Deck, remainingDeckTree: Deck): void;
     setCurrentDeck(topicPath: TopicPath): void;
+    refreshRemainingDeckTree(): void;
     getDeckStats(topicPath: TopicPath): DeckStats;
     getSubDecksWithCardsInQueue(deck: Deck): Deck[];
     skipCurrentCard(): void;
@@ -109,6 +110,7 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     private questionPostponementList: IQuestionPostponementList;
     private dueDateFlashcardHistogram: DueDateHistogram;
 
+
     constructor(
         reviewMode: FlashcardReviewMode,
         cardSequencer: IDeckTreeIterator,
@@ -154,7 +156,20 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
         this.setCurrentDeck(TopicPath.emptyPath);
     }
 
+    refreshRemainingDeckTree(): void {
+        // Re-filter from original deck tree to restore skipped cards
+        // Reviewed cards are excluded because their scheduleInfo was updated in-place
+        // (isDue=false for future dates), while skipped cards remain unchanged
+        this.remainingDeckTree = DeckTreeFilter.filterForRemainingCards(
+            this.questionPostponementList,
+            this._originalDeckTree,
+            this.reviewMode,
+        );
+        this.cardSequencer.setBaseDeck(this.remainingDeckTree);
+    }
+
     setCurrentDeck(topicPath: TopicPath): void {
+        this.refreshRemainingDeckTree();
         this.cardSequencer.setIteratorTopicPath(topicPath);
         this.cardSequencer.nextCard();
     }

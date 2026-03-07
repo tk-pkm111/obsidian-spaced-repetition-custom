@@ -176,14 +176,14 @@ export class ReviewQueueListView extends ItemView {
         const statsEl = dashCard.createDiv("sr-dashboard-stats");
         if (totalOverdue > 0) {
             const overdueRow = statsEl.createDiv("sr-stat-row sr-stat-overdue");
-            overdueRow.createDiv("sr-stat-label").setText("⏰ 期限切れ");
+            overdueRow.createDiv("sr-stat-label").setText("期限切れ");
             overdueRow.createDiv("sr-stat-count").setText(String(totalOverdue));
         }
 
         // Due today stat (clickable)
         const todayNotesByDeck = new Map<string, SchedNote[]>();
         const reviewRow = statsEl.createDiv("sr-stat-row sr-stat-review sr-clickable");
-        reviewRow.createDiv("sr-stat-label").setText("📝 本日分");
+        reviewRow.createDiv("sr-stat-label").setText("本日分");
         reviewRow.createDiv("sr-stat-count").setText(String(totalDueToday));
         reviewRow.addEventListener("click", () => {
             new TodayNotesModal(this.app, todayNotesByDeck).open();
@@ -191,7 +191,7 @@ export class ReviewQueueListView extends ItemView {
 
         // New stat
         const newRow = statsEl.createDiv("sr-stat-row sr-stat-new");
-        newRow.createDiv("sr-stat-label").setText("✨ 新規");
+        newRow.createDiv("sr-stat-label").setText("新規");
         newRow.createDiv("sr-stat-count").setText(String(totalNew));
 
         // Progress bar

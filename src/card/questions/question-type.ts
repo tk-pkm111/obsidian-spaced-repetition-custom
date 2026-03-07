@@ -1,5 +1,6 @@
 import { ClozeCrafter, IClozeFormatter } from "clozecraft";
 
+import { parseCornellQuestionText } from "src/card/questions/cornell";
 import { CardType } from "src/card/questions/question";
 import { SRSettings } from "src/settings";
 import { findLineIndexOfSearchStringIgnoringWs } from "src/utils/strings";
@@ -114,6 +115,13 @@ class QuestionTypeCloze implements IQuestionTypeHandler {
     }
 }
 
+class QuestionTypeCornell implements IQuestionTypeHandler {
+    expand(questionText: string, _settings: SRSettings): CardFrontBack[] {
+        const { front, back } = parseCornellQuestionText(questionText);
+        return [new CardFrontBack(front, back)];
+    }
+}
+
 export class QuestionTypeClozeFormatter implements IClozeFormatter {
     asking(answer?: string, hint?: string): string {
         return `<span style='color:#2196f3'>${!hint ? "[...]" : `[${hint}]`}</span>`;
@@ -160,6 +168,9 @@ export class QuestionTypeFactory {
                 break;
             case CardType.Cloze:
                 handler = new QuestionTypeCloze();
+                break;
+            case CardType.Cornell:
+                handler = new QuestionTypeCornell();
                 break;
         }
         return handler;

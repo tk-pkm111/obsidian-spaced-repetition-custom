@@ -41,7 +41,7 @@ export default {
         "レビューを行うにはノートに対して正しくタグ付けしてください(設定を確認してください)。",
     RESPONSE_RECEIVED: "答えを受け取りました。",
     NO_DECK_EXISTS: "${deckName}にはデッキが存在しません。",
-    ALL_CAUGHT_UP: "今日の課題をすべて達成しました :D",
+    ALL_CAUGHT_UP: "お疲れ様でした！🎉",
 
     // scheduling.ts
     DAYS_STR_IVL: "${interval}日後",

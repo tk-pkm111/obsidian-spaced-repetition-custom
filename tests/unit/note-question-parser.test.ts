@@ -16,6 +16,12 @@ import { createTestNoteQuestionParser } from "./sample-items";
 
 const parserWithDefaultSettings: NoteQuestionParser =
     createTestNoteQuestionParser(DEFAULT_SETTINGS);
+const settingsWithCornell: SRSettings = {
+    ...DEFAULT_SETTINGS,
+    flashcardTags: ["#cornell", "#flashcards"],
+};
+const parserWithCornellSettings: NoteQuestionParser =
+    createTestNoteQuestionParser(settingsWithCornell);
 const settingsConvertFoldersToDecks: SRSettings = { ...DEFAULT_SETTINGS };
 settingsConvertFoldersToDecks.convertFoldersToDecks = true;
 const parserConvertFoldersToDecks: NoteQuestionParser = createTestNoteQuestionParser(
@@ -874,5 +880,71 @@ A::B
                 true,
             ),
         ).toMatchObject(expected);
+    });
+});
+
+describe("Cornell questions", () => {
+    test("Cue blocks are parsed into Cornell cards", async () => {
+        const noteText = `#cornell
+
+---
+>[!cue] aaa
+>
+ああああ
+
+---
+>[!cue] あああ
+>
+こんにちは
+
+---
+>[!cue] あああ
+>あああ`;
+
+        const noteFile: ISRFile = new UnitTestSRFile(noteText);
+        const questionList = await parserWithCornellSettings.createQuestionList(
+            noteFile,
+            TextDirection.Ltr,
+            TopicPath.emptyPath,
+            true,
+        );
+
+        expect(questionList).toMatchObject([
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                questionText: {
+                    original: `>[!cue] aaa
+>
+ああああ`,
+                },
+                cards: [new Card({ front: "aaa", back: "ああああ" })],
+            },
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                cards: [new Card({ front: "あああ", back: "こんにちは" })],
+            },
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                cards: [new Card({ front: "あああ", back: "あああ" })],
+            },
+        ]);
+    });
+
+    test("Question mark syntax with only #cornell is still ignored", async () => {
+        const noteText = `#cornell
+フランスの首都は？ ?? パリ`;
+
+        const noteFile: ISRFile = new UnitTestSRFile(noteText);
+        const questionList = await parserWithCornellSettings.createQuestionList(
+            noteFile,
+            TextDirection.Ltr,
+            TopicPath.emptyPath,
+            true,
+        );
+
+        expect(questionList).toEqual([]);
     });
 });

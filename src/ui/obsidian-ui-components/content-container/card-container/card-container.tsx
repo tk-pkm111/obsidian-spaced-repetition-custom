@@ -1,5 +1,5 @@
 import { now } from "moment";
-import { App, Platform } from "obsidian";
+import { App, Platform, TFile } from "obsidian";
 
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { Card } from "src/card/card";
@@ -10,6 +10,7 @@ import {
 import { CardType, Question } from "src/card/questions/question";
 import { Deck } from "src/deck/deck";
 import { escapeHtml } from "src/escape-html";
+import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
 import { Note } from "src/note/note";
 import { SRSettings } from "src/settings";
@@ -38,6 +39,7 @@ export class CardContainer {
 
     public response: ResponseSectionComponent;
     public lastPressed: number;
+    private lastNavigationPressed: number;
 
     public isActive: boolean = false;
 
@@ -58,6 +60,8 @@ export class CardContainer {
     private backToDeck: () => void;
     private editClickHandler: () => void;
     private closeModal: () => void | undefined;
+    private openNoteFromContext?: (notePath: string, openInNewLeaf: boolean) => Promise<void>;
+    private minimizeToFloatingBar?: () => void;
 
     // History of skipped cards (for the "previous card" button)
     private _cardHistory: Array<{
@@ -65,6 +69,15 @@ export class CardContainer {
         question: Question;
         note: Note;
     }> = [];
+
+    // When viewing a historical card, this holds the displayed card info
+    // (the sequencer's current card remains unchanged)
+    private _historyItem: { card: Card; question: Question; note: Note } | null = null;
+    private _historyCursor: number | null = null;
+    private _historyOffset: number = 0;
+    private _isCardActionInProgress: boolean = false;
+    private _isCompletionCardVisible: boolean = false;
+    private _isFlipAnimationInProgress: boolean = false;
 
     constructor(
         app: App,
@@ -76,6 +89,8 @@ export class CardContainer {
         backToDeck: () => void,
         editClickHandler: () => void,
         closeModal?: () => void,
+        openNoteFromContext?: (notePath: string, openInNewLeaf: boolean) => Promise<void>,
+        minimizeToFloatingBar?: () => void,
     ) {
         // Init properties
         this.app = app;
@@ -88,6 +103,8 @@ export class CardContainer {
         this.view = view;
         this.chosenDeck = null;
         this.closeModal = closeModal;
+        this.openNoteFromContext = openNoteFromContext;
+        this.minimizeToFloatingBar = minimizeToFloatingBar;
 
         // Build ui
         this.init();
@@ -106,10 +123,11 @@ export class CardContainer {
             !this.settings.openViewInNewTab,
             () => this.backToDeck(),
             () => this.editClickHandler(),
-            (response: ReviewResponse) => this._processReview(response),
+            () => this._hideAnswer(),
             () => this._displayCurrentCardInfoNotice(),
             () => this._skipCurrentCard(),
             () => this._goToPreviousCard(),
+            this.minimizeToFloatingBar ? () => this.minimizeToFloatingBar() : undefined,
             this.closeModal ? this.closeModal.bind(this) : undefined,
         );
 
@@ -146,6 +164,12 @@ export class CardContainer {
             return;
         }
 
+        this._historyItem = null;
+        this._historyCursor = null;
+        this._historyOffset = 0;
+        this._isCompletionCardVisible = false;
+        this._cardHistory = [];
+        this.controls.previousCardButton.setDisabled(true);
         this.chosenDeck = chosenDeck;
         const deckStats = this.reviewSequencer.getDeckStats(chosenDeck.getTopicPath());
         this.totalCardsInSession = deckStats.cardsInQueueCount;
@@ -163,6 +187,24 @@ export class CardContainer {
      */
     async refresh() {
         await this._drawContent();
+    }
+
+    public getFloatingBarSummary(): { deckName: string; counter: string } {
+        return {
+            deckName: this.infoSection.chosenDeckName.getText(),
+            counter: this.infoSection.chosenDeckCardCounter.getText(),
+        };
+    }
+
+    public resumeAfterFloatingBarRestore(): void {
+        this.lastPressed = 0;
+        this.lastNavigationPressed = 0;
+        this._isCardActionInProgress = false;
+        this._isFlipAnimationInProgress = false;
+
+        if (this.mode === FlashcardMode.Back && !this._isCompletionCardVisible) {
+            this.controls.resetButton.disabled = false;
+        }
     }
 
     /**
@@ -204,6 +246,10 @@ export class CardContainer {
 
     private async _drawContent(skipAnimation = false) {
         this.controls.resetButton.disabled = true;
+        this._isCompletionCardVisible = false;
+        this._isFlipAnimationInProgress = false;
+        this.content.removeClasses(["sr-flip-out-animating", "sr-flip-in-animating"]);
+        this.response.answerButton.setButtonText(t("SHOW_ANSWER"));
 
         // Update current deck info
         this.mode = FlashcardMode.Front;
@@ -250,18 +296,23 @@ export class CardContainer {
     }
 
     private get _currentCard(): Card {
-        return this.reviewSequencer.currentCard;
+        return this._historyItem?.card ?? this.reviewSequencer.currentCard;
     }
 
     private get _currentQuestion(): Question {
-        return this.reviewSequencer.currentQuestion;
+        return this._historyItem?.question ?? this.reviewSequencer.currentQuestion;
     }
 
     private get _currentNote(): Note {
-        return this.reviewSequencer.currentNote;
+        return this._historyItem?.note ?? this.reviewSequencer.currentNote;
     }
 
     private async _processReview(response: ReviewResponse): Promise<void> {
+        // Can't grade a historical card — ignore
+        if (this._historyItem) return;
+        if (this._isFlipAnimationInProgress) return;
+        if (this._isCardActionInProgress) return;
+
         const timeNow = now();
         if (
             this.lastPressed &&
@@ -270,46 +321,123 @@ export class CardContainer {
             return;
         }
         this.lastPressed = timeNow;
+        this._isCardActionInProgress = true;
 
-        // Clear card history on review — can't go back past a graded card
-        this._cardHistory = [];
-        this.controls.previousCardButton.setDisabled(true);
+        try {
+            this._isCompletionCardVisible = false;
+            // Clear card history on review — can't go back past a graded card
+            this._cardHistory = [];
+            this._historyCursor = null;
+            this._historyOffset = 0;
+            this.controls.previousCardButton.setDisabled(true);
 
-        await this.reviewSequencer.processReview(response);
-        await this._showNextCard();
+            await this.reviewSequencer.processReview(response);
+            await this._showNextCard();
+        } finally {
+            this._isCardActionInProgress = false;
+        }
     }
 
     private async _showNextCard(): Promise<void> {
         if (this._currentCard != null) await this.refresh();
-        else this.backToDeck();
+        else await this._showCompletionCard();
     }
 
     // #region -> Controls
 
     private async _skipCurrentCard(): Promise<void> {
-        // Save to history before skipping
-        this._cardHistory.push({
-            card: this._currentCard,
-            question: this._currentQuestion,
-            note: this._currentNote,
-        });
-        this.controls.previousCardButton.setDisabled(false);
+        if (
+            this._isCardActionInProgress ||
+            this._isFlipAnimationInProgress ||
+            this._isNavigationActionRateLimited()
+        ) {
+            return;
+        }
+        this._isCardActionInProgress = true;
 
-        this.reviewSequencer.skipCurrentCard();
-        await this._showNextCard();
+        try {
+            if (this._isCompletionCardVisible) {
+                this.backToDeck();
+                return;
+            }
+
+            if (this._historyItem) {
+                // Viewing a historical card — step forward through history
+                // until we eventually return to the sequencer's current card.
+                if (this._historyCursor < this._cardHistory.length - 1) {
+                    this._historyCursor += 1;
+                    await this._renderHistoryCursorCard();
+                } else {
+                    this._historyCursor = null;
+                    this._historyItem = null;
+                    this._historyOffset = 0;
+                    this.controls.previousCardButton.setDisabled(this._cardHistory.length === 0);
+                    await this.refresh();
+                }
+                return;
+            }
+
+            // Save to history before skipping
+            this._cardHistory.push({
+                card: this._currentCard,
+                question: this._currentQuestion,
+                note: this._currentNote,
+            });
+            this.controls.previousCardButton.setDisabled(false);
+
+            this.reviewSequencer.skipCurrentCard();
+            await this._showNextCard();
+        } finally {
+            this._isCardActionInProgress = false;
+        }
     }
 
     private async _goToPreviousCard(): Promise<void> {
-        const prev = this._cardHistory.pop();
-        if (!prev) return;
+        if (
+            this._isCardActionInProgress ||
+            this._isFlipAnimationInProgress ||
+            this._isNavigationActionRateLimited()
+        ) {
+            return;
+        }
+        this._isCardActionInProgress = true;
 
-        // Update the previous button state
-        this.controls.previousCardButton.setDisabled(this._cardHistory.length === 0);
+        try {
+            if (this._isCompletionCardVisible || this._cardHistory.length === 0) {
+                return;
+            }
 
-        // Move the current card to the end of the queue (skip it)
-        this.reviewSequencer.skipCurrentCard();
+            if (this._historyCursor == null) {
+                this._historyCursor = this._cardHistory.length - 1;
+            } else if (this._historyCursor > 0) {
+                this._historyCursor -= 1;
+            } else {
+                return;
+            }
 
-        // Re-render the historical card's content directly
+            await this._renderHistoryCursorCard();
+        } finally {
+            this._isCardActionInProgress = false;
+        }
+    }
+
+    private _displayCurrentCardInfoNotice() {
+        new CardInfoNotice(this._currentCard.scheduleInfo, this._currentQuestion.note.filePath);
+    }
+
+    private async _renderHistoryCursorCard(): Promise<void> {
+        if (this._historyCursor == null) return;
+
+        const currentHistoryItem = this._cardHistory[this._historyCursor];
+        if (!currentHistoryItem) return;
+
+        this._historyItem = currentHistoryItem;
+        this._historyOffset = this._cardHistory.length - this._historyCursor;
+        this.controls.previousCardButton.setDisabled(this._historyCursor === 0);
+
+        this._updateInfoBar(this.chosenDeck, this.currentDeck);
+
+        // Re-render the historical card's content
         this.mode = FlashcardMode.Front;
         this.content.empty();
         this.content.removeClass("sr-flip-animating");
@@ -319,12 +447,12 @@ export class CardContainer {
         const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
             this.app,
             this.plugin,
-            prev.note.filePath,
+            currentHistoryItem.note.filePath,
         );
         await wrapper.renderMarkdownWrapper(
-            prev.card.front.trimStart(),
+            currentHistoryItem.card.front.trimStart(),
             this.content,
-            prev.question.questionText.textDirection,
+            currentHistoryItem.question.questionText.textDirection,
         );
         this.content.scrollTop = 0;
         this.response.resetResponseButtons();
@@ -332,8 +460,52 @@ export class CardContainer {
         this._setupClozeInputListeners();
     }
 
-    private _displayCurrentCardInfoNotice() {
-        new CardInfoNotice(this._currentCard.scheduleInfo, this._currentQuestion.note.filePath);
+    private _isNavigationActionRateLimited(): boolean {
+        const timeNow = now();
+        if (
+            this.lastNavigationPressed &&
+            timeNow - this.lastNavigationPressed < this.plugin.data.settings.reviewButtonDelay
+        ) {
+            return true;
+        }
+        this.lastNavigationPressed = timeNow;
+        return false;
+    }
+
+    private async _showCompletionCard(): Promise<void> {
+        this._isCompletionCardVisible = true;
+        this.mode = FlashcardMode.Front;
+        this.controls.resetButton.disabled = true;
+        this.controls.previousCardButton.setDisabled(true);
+
+        this._updateInfoBar(this.chosenDeck, this.currentDeck);
+        this._setupCardContextLink();
+
+        this.content.empty();
+        this.content.removeClass("sr-flip-animating");
+        void this.content.offsetWidth;
+        this.content.addClass("sr-flip-animating");
+
+        const completionCard = this.content.createDiv("sr-card-completion-card");
+        completionCard.createDiv("sr-card-completion-card-title").setText(t("ALL_CAUGHT_UP"));
+        completionCard
+            .createDiv("sr-card-completion-card-subtitle")
+            .setText(`${t("NEXT")} (${t("DECKS")})`);
+
+        this.response.resetResponseButtons();
+        this.response.answerButton.setButtonText(`${t("NEXT")} (${t("DECKS")})`);
+    }
+
+    private async _hideAnswer(): Promise<void> {
+        if (
+            this._isCompletionCardVisible ||
+            this._isFlipAnimationInProgress ||
+            this.mode !== FlashcardMode.Back
+        ) {
+            return;
+        }
+
+        await this.refresh();
     }
 
     // #region -> Deck Info
@@ -341,11 +513,14 @@ export class CardContainer {
     private _updateInfoBar(chosenDeck: Deck, currentDeck: Deck) {
         const currentDeckStats = this.reviewSequencer.getDeckStats(currentDeck.getTopicPath());
         const chosenDeckStats = this.reviewSequencer.getDeckStats(chosenDeck.getTopicPath());
+        this._updateSkipButtonHint(chosenDeckStats.cardsInQueueCount);
         this.infoSection.updateChosenDeckInfo(
             chosenDeck,
             chosenDeckStats,
             this.totalCardsInSession,
             this.totalDecksInSession,
+            this._historyOffset,
+            this._isCompletionCardVisible,
         );
         this.infoSection.updateCurrentDeckInfo(
             chosenDeck,
@@ -353,12 +528,57 @@ export class CardContainer {
             currentDeckStats,
             this.settings.flashcardCardOrder,
             this.currentDeckTotalCardsInQueue,
+            this._historyOffset,
+            this._isCompletionCardVisible,
         );
-        this.infoSection.updateCardContext(
-            this.settings.showContextInCards,
-            this._currentQuestion,
-            this._currentNote,
-        );
+        if (this._isCompletionCardVisible) {
+            this.infoSection.cardContext?.setText("");
+        } else {
+            this.infoSection.updateCardContext(
+                this.settings.showContextInCards,
+                this._currentQuestion,
+                this._currentNote,
+            );
+        }
+        this._setupCardContextLink();
+    }
+
+    private _updateSkipButtonHint(remainingCardsInChosenDeck: number): void {
+        const isLastCardInQueue =
+            this._isCompletionCardVisible || (!this._historyItem && remainingCardsInChosenDeck === 1);
+        const tooltip = isLastCardInQueue
+            ? `${t("NEXT")} (${t("DECKS")})`
+            : t("SKIP");
+        this.controls.skipButton.setTooltip(tooltip);
+        this.controls.skipButton.buttonEl.setAttribute("aria-label", tooltip);
+    }
+
+    private _setupCardContextLink(): void {
+        if (!this.infoSection.cardContext || !this.settings.showContextInCards) return;
+        if (this._isCompletionCardVisible) {
+            this.infoSection.cardContext.removeClass("is-link");
+            this.infoSection.cardContext.removeAttribute("role");
+            this.infoSection.cardContext.removeAttribute("aria-label");
+            this.infoSection.cardContext.title = "";
+            this.infoSection.cardContext.onclick = null;
+            return;
+        }
+
+        const notePath = this._currentNote.filePath;
+        this.infoSection.cardContext.addClass("is-link");
+        this.infoSection.cardContext.setAttribute("role", "link");
+        this.infoSection.cardContext.setAttribute("aria-label", notePath);
+        this.infoSection.cardContext.title = notePath;
+        this.infoSection.cardContext.onclick = async (e: MouseEvent) => {
+            const openInNewLeaf = e.metaKey || e.ctrlKey;
+            if (this.openNoteFromContext) {
+                await this.openNoteFromContext(notePath, openInNewLeaf);
+                return;
+            }
+            const file = this.app.vault.getAbstractFileByPath(notePath);
+            if (!(file instanceof TFile)) return;
+            await this.app.workspace.getLeaf(openInNewLeaf).openFile(file);
+        };
     }
 
     private _setupClozeInputListeners(): void {
@@ -392,7 +612,15 @@ export class CardContainer {
 
     // #region -> Response
 
-    private _showAnswer(): void {
+    private async _showAnswer(): Promise<void> {
+        if (this._isCompletionCardVisible) {
+            this.backToDeck();
+            return;
+        }
+        if (this._isFlipAnimationInProgress || this.mode !== FlashcardMode.Front) {
+            return;
+        }
+
         const timeNow = now();
         if (
             this.lastPressed &&
@@ -401,40 +629,58 @@ export class CardContainer {
             return;
         }
         this.lastPressed = timeNow;
+        this._isFlipAnimationInProgress = true;
+        try {
+            this.mode = FlashcardMode.Back;
 
-        this.mode = FlashcardMode.Back;
+            this.controls.resetButton.disabled = false;
 
-        this.controls.resetButton.disabled = false;
+            this.content.removeClass("sr-flip-in-animating");
+            this.content.addClass("sr-flip-out-animating");
+            await new Promise((resolve) => window.setTimeout(resolve, 180));
+            this.content.removeClass("sr-flip-out-animating");
 
-        // Show answer text
-        if (this._currentQuestion.questionType !== CardType.Cloze) {
-            const hr: HTMLElement = document.createElement("hr");
-            this.content.appendChild(hr);
-        } else {
-            this.content.empty();
+            // Show answer text with delayed fade-in
+            let answerContainer: HTMLDivElement;
+            if (this._currentQuestion.questionType !== CardType.Cloze) {
+                const hr: HTMLElement = document.createElement("hr");
+                this.content.appendChild(hr);
+                answerContainer = this.content.createDiv("sr-answer-content");
+            } else {
+                this.content.empty();
+                answerContainer = this.content.createDiv("sr-answer-content");
+            }
+
+            const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+                this.app,
+                this.plugin,
+                this._currentNote.filePath,
+            );
+            await wrapper.renderMarkdownWrapper(
+                this._currentCard.back,
+                answerContainer,
+                this._currentQuestion.questionText.textDirection,
+            );
+
+            // Evaluate cloze answers
+            this._evaluateClozeAnswers();
+
+            this.content.removeClass("sr-flip-animating");
+            this.content.addClass("sr-flip-in-animating");
+            this.content.scrollTop = 0;
+
+            // Show response buttons
+            this.response.showRatingButtons(
+                this.reviewMode,
+                this.settings,
+                this.reviewSequencer,
+                this._currentCard,
+            );
+            await new Promise((resolve) => window.setTimeout(resolve, 450));
+            this.content.removeClass("sr-flip-in-animating");
+        } finally {
+            this._isFlipAnimationInProgress = false;
         }
-
-        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
-            this.app,
-            this.plugin,
-            this._currentNote.filePath,
-        );
-        wrapper.renderMarkdownWrapper(
-            this._currentCard.back,
-            this.content,
-            this._currentQuestion.questionText.textDirection,
-        );
-
-        // Evaluate cloze answers
-        this._evaluateClozeAnswers();
-
-        // Show response buttons
-        this.response.showRatingButtons(
-            this.reviewMode,
-            this.settings,
-            this.reviewSequencer,
-            this._currentCard,
-        );
     }
 
     private _keydownHandler = (e: KeyboardEvent) => {

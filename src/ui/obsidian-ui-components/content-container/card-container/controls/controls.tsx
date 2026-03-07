@@ -1,9 +1,9 @@
 import { Platform } from "obsidian";
 
-import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import BackButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/back-button";
 import CardInfoButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/card-info-button";
 import EditButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/edit-button";
+import MinimizeToFloatingBarButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/minimize-to-floating-bar-button";
 import ResetButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/reset-button";
 import SkipButtonComponent from "src/ui/obsidian-ui-components/content-container/card-container/controls/skip-button";
 import ModalCloseButtonComponent from "src/ui/obsidian-ui-components/content-container/modal-close-button";
@@ -19,16 +19,18 @@ export default class ControlsComponent {
     public infoButton: CardInfoButtonComponent;
     public previousCardButton: PreviousCardButtonComponent;
     public skipButton: SkipButtonComponent;
+    public minimizeToFloatingBarButton: MinimizeToFloatingBarButtonComponent;
 
     constructor(
         container: HTMLElement,
         isModal: boolean,
         backToDeck: () => void,
         editClickHandler: () => void,
-        processReview: (response: ReviewResponse) => void,
+        hideAnswer: () => void,
         displayCurrentCardInfoNotice: () => void,
         skipCurrentCard: () => void,
         goToPreviousCard: () => void,
+        minimizeToFloatingBar?: () => void,
         closeModal?: () => void,
     ) {
         this.controls = container.createDiv();
@@ -50,7 +52,7 @@ export default class ControlsComponent {
 
         this.resetButton = new ResetButtonComponent(
             this.controls,
-            () => processReview(ReviewResponse.Reset),
+            () => hideAnswer(),
             EmulatedPlatform().isPhone || Platform.isPhone ? ["mod-raised"] : undefined,
         );
 
@@ -74,6 +76,16 @@ export default class ControlsComponent {
         );
 
         this.controls.createDiv().addClass("sr-flex-spacer");
+
+        this.minimizeToFloatingBarButton = new MinimizeToFloatingBarButtonComponent(
+            this.controls,
+            () => minimizeToFloatingBar && minimizeToFloatingBar(),
+            [
+                !isModal && "sr-hide-by-scaling",
+                !isModal && "hide-height",
+                EmulatedPlatform().isPhone || Platform.isPhone ? "mod-raised" : "clickable-icon",
+            ],
+        );
 
         this.modalCloseButton = new ModalCloseButtonComponent(
             this.controls,

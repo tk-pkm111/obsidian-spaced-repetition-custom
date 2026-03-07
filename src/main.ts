@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile } from "obsidian";
+import { Editor, Notice, Plugin, TFile } from "obsidian";
 
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
@@ -34,6 +34,7 @@ import { setDebugParser } from "src/parser";
 import { DEFAULT_DATA, PluginData } from "src/plugin-data";
 import { DEFAULT_SETTINGS, SettingsUtil, SRSettings, upgradeSettings } from "src/settings";
 import { REVIEW_QUEUE_VIEW_TYPE } from "src/ui/obsidian-ui-components/item-views/review-queue-list-view";
+import { FlashcardEditModal } from "src/ui/obsidian-ui-components/modals/edit-modal";
 import { UIManager } from "src/ui/ui-manager";
 import { convertToStringOrEmpty, TextDirection } from "src/utils/strings";
 
@@ -75,6 +76,7 @@ export default class SRPlugin extends Plugin {
         this.uiManager = new UIManager(this);
 
         this.addPluginCommands();
+        this.registerEditorContextMenuCommands();
     }
 
     private addPluginCommands() {
@@ -175,6 +177,45 @@ export default class SRPlugin extends Plugin {
                 await this.uiManager.sidebarManager.openReviewQueueView();
             },
         });
+
+        this.addCommand({
+            id: "srs-convert-selection-to-flashcard",
+            name: "選択範囲をフラッシュカード化",
+            hotkeys: [
+                {
+                    modifiers: ["Mod", "Shift"],
+                    key: "k",
+                },
+            ],
+            editorCheckCallback: (checking: boolean, editor: Editor) => {
+                const selectedText = editor.getSelection();
+                const hasSelection = selectedText.trim().length > 0;
+                if (checking) {
+                    return hasSelection;
+                }
+                void this.convertSelectionToFlashcard(editor, selectedText);
+                return true;
+            },
+        });
+    }
+
+    private registerEditorContextMenuCommands() {
+        this.registerEvent(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            this.app.workspace.on("editor-menu" as any, (menu: any, editor: Editor) => {
+                const selectedText = editor.getSelection();
+                if (!selectedText || selectedText.trim().length === 0) return;
+
+                menu.addItem((item) => {
+                    item
+                        .setTitle("フラッシュカード化する")
+                        .setIcon("list-plus")
+                        .onClick(async () => {
+                            await this.convertSelectionToFlashcard(editor, selectedText);
+                        });
+                });
+            }),
+        );
     }
 
     onunload(): void {
@@ -331,5 +372,137 @@ export default class SRPlugin extends Plugin {
     }
     async savePluginData(): Promise<void> {
         await this.saveData(this.data);
+    }
+
+    private async convertSelectionToFlashcard(
+        editor: Editor,
+        rawSelection?: string,
+    ): Promise<void> {
+        const selectedText = (rawSelection ?? editor.getSelection()).trim();
+        if (!selectedText) {
+            new Notice("テキストを選択してから実行してください。");
+            return;
+        }
+
+        const questionText = await FlashcardEditModal.Prompt(
+            this.app,
+            "",
+            this.getObsidianRtlSetting(),
+            "質問を入力してください",
+        ).catch(() => "");
+
+        const normalizedQuestionText = questionText.trim();
+        if (!normalizedQuestionText) {
+            new Notice("質問の入力をキャンセルしました。");
+            return;
+        }
+
+        const normalizedSelectedText = selectedText.replace(/\r\n/g, "\n").trim();
+        const isMultilineAnswer = normalizedSelectedText.includes("\n");
+
+        const singleLineCardSeparator = this.data.settings.singleLineCardSeparator || "::";
+        const multilineCardSeparator = this.data.settings.multilineCardSeparator || "?";
+        const preferredFlashcardTag = this.getPreferredFlashcardTag();
+        this.ensureFrontmatterHasFlashcardTag(editor, preferredFlashcardTag);
+        const replacementText = isMultilineAnswer
+            ? `${normalizedQuestionText}\n${multilineCardSeparator}\n${normalizedSelectedText}\n\n`
+            : `${normalizedQuestionText} ${singleLineCardSeparator} ${normalizedSelectedText}`;
+
+        editor.replaceSelection(replacementText);
+        editor.setCursor(editor.getCursor("to"));
+        new Notice("フラッシュカードに変換しました。");
+    }
+
+    private getPreferredFlashcardTag(): string {
+        const tags = this.data.settings.flashcardTags ?? [];
+        if (tags.length === 0) return "#flashcards";
+
+        const flashcardsLikeTag = tags.find((tag) => /flashcards?/i.test(tag));
+        return flashcardsLikeTag || tags[0];
+    }
+
+    private ensureFrontmatterHasFlashcardTag(editor: Editor, flashcardTag: string): void {
+        const normalizedTag = flashcardTag.replace(/^#/, "").trim();
+        if (!normalizedTag) return;
+
+        const firstLine = editor.lineCount() > 0 ? editor.getLine(0).trim() : "";
+        if (firstLine !== "---") {
+            const newFrontmatter = `---\ntags:\n  - ${normalizedTag}\n---\n\n`;
+            editor.replaceRange(newFrontmatter, { line: 0, ch: 0 });
+            return;
+        }
+
+        let closingLine = -1;
+        for (let line = 1; line < editor.lineCount(); line++) {
+            if (editor.getLine(line).trim() === "---") {
+                closingLine = line;
+                break;
+            }
+        }
+        if (closingLine === -1) {
+            return;
+        }
+
+        const frontmatterText = editor.getRange(
+            { line: 0, ch: 0 },
+            { line: closingLine, ch: editor.getLine(closingLine).length },
+        );
+        if (this.frontmatterContainsTag(frontmatterText, normalizedTag)) {
+            return;
+        }
+
+        let tagsLine = -1;
+        for (let line = 1; line < closingLine; line++) {
+            if (/^\s*tags\s*:/.test(editor.getLine(line))) {
+                tagsLine = line;
+                break;
+            }
+        }
+
+        if (tagsLine === -1) {
+            editor.replaceRange(`tags:\n  - ${normalizedTag}\n`, { line: closingLine, ch: 0 });
+            return;
+        }
+
+        const tagsLineText = editor.getLine(tagsLine);
+        const tagsLineMatch = tagsLineText.match(/^(\s*)tags\s*:\s*(.*)$/);
+        if (!tagsLineMatch) return;
+
+        const indent = tagsLineMatch[1] ?? "";
+        const rest = tagsLineMatch[2]?.trim() ?? "";
+
+        if (rest.startsWith("[") && rest.endsWith("]")) {
+            const inner = rest.slice(1, -1).trim();
+            const newInner = inner.length > 0 ? `${inner}, ${normalizedTag}` : normalizedTag;
+            const newLine = `${indent}tags: [${newInner}]`;
+            editor.replaceRange(
+                newLine,
+                { line: tagsLine, ch: 0 },
+                { line: tagsLine, ch: tagsLineText.length },
+            );
+            return;
+        }
+
+        if (rest.length > 0) {
+            const newLine = `${indent}tags: [${rest}, ${normalizedTag}]`;
+            editor.replaceRange(
+                newLine,
+                { line: tagsLine, ch: 0 },
+                { line: tagsLine, ch: tagsLineText.length },
+            );
+            return;
+        }
+
+        let insertLine = tagsLine + 1;
+        while (insertLine < closingLine && /^\s*-\s+/.test(editor.getLine(insertLine))) {
+            insertLine += 1;
+        }
+        editor.replaceRange(`${indent}  - ${normalizedTag}\n`, { line: insertLine, ch: 0 });
+    }
+
+    private frontmatterContainsTag(frontmatterText: string, normalizedTag: string): boolean {
+        const escapedTag = normalizedTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const tagRegex = new RegExp(`(^|[\\s,\\[\\]-])#?${escapedTag}(?=$|[\\s,\\],])`, "i");
+        return tagRegex.test(frontmatterText);
     }
 }

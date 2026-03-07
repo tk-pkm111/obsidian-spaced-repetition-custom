@@ -68,7 +68,27 @@ export class UIManager {
                 if (!this.plugin.osrAppCore.syncLock) {
                     await this.plugin.sync();
                 }
+                initialSyncDone = true;
+                console.log("SR: Initial sync complete, metadata change listener active");
             }, 2000);
+
+            // Listen for metadata changes (e.g. frontmatter tag edits)
+            // and incrementally update the review queue
+            let initialSyncDone = false;
+            let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+            this.plugin.registerEvent(
+                this.plugin.app.metadataCache.on("changed", (file: TFile) => {
+                    if (!initialSyncDone) return;
+                    if (file.extension !== "md") return;
+                    console.log("SR: metadataCache changed detected for", file.path);
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(async () => {
+                        debounceTimer = null;
+                        console.log("SR: Processing file change for", file.path);
+                        await this.plugin.osrAppCore.processFileChange(file);
+                    }, 500);
+                }),
+            );
         });
 
         this.statusBarManager = new StatusBarManager(

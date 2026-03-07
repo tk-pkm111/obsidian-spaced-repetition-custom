@@ -27,7 +27,7 @@ export interface IOsrVaultEvents {
 export class OsrCore {
     public defaultTextDirection: TextDirection;
     protected settings: SRSettings;
-    private dataChangedHandler: () => void;
+    protected dataChangedHandler: () => void;
     protected osrNoteGraph: OsrNoteGraph;
     private osrNoteLinkInfoFinder: IOsrVaultNoteLinkInfoFinder;
     private _questionPostponementList: QuestionPostponementList;
@@ -190,7 +190,7 @@ export class OsrCore {
         if (this.dataChangedHandler) this.dataChangedHandler();
     }
 
-    private calculateDerivedInfo(): void {
+    protected calculateDerivedInfo(): void {
         const todayUnix: number = globalDateProvider.today.valueOf();
         this.noteReviewQueue.calcDueNotesCount(todayUnix);
         this._dueDateNoteHistogram.calculateFromReviewDecksAndSort(
@@ -263,6 +263,28 @@ export class OsrAppCore extends OsrCore {
         } finally {
             this._syncLock = false;
         }
+    }
+
+    async processFileChange(note: TFile): Promise<void> {
+        if (this._syncLock) {
+            console.log("SR: processFileChange skipped (syncLock)");
+            return;
+        }
+
+        console.log("SR: processFileChange start for", note.path);
+
+        // Remove old entry for this file from review queues
+        this.noteReviewQueue.removeNoteByPath(note.path);
+
+        // Re-process the changed file
+        const file: SrTFile = this.createSrTFile(note);
+        await this.processFile(file);
+
+        // Recalculate counts and redraw sidebar
+        this.calculateDerivedInfo();
+        if (this.dataChangedHandler) this.dataChangedHandler();
+
+        console.log("SR: processFileChange complete for", note.path);
     }
 
     createSrTFile(note: TFile): SrTFile {

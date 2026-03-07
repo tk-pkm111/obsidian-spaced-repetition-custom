@@ -102,3 +102,13 @@ test("CardType.Cloze", () => {
         ),
     ]);
 });
+
+test("CardType.Cornell", () => {
+    expect(
+        CardFrontBackUtil.expand(
+            CardType.Cornell,
+            `>[!cue] フランスの首都は？\n>\nパリ`,
+            DEFAULT_SETTINGS,
+        ),
+    ).toEqual([new CardFrontBack("フランスの首都は？", "パリ")]);
+});

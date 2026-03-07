@@ -24,6 +24,8 @@ export default class InfoSectionComponent {
     public chosenDeckSubDeckCounterWrapper: HTMLDivElement;
     public chosenDeckSubDeckCounter: HTMLDivElement;
     public chosenDeckSubDeckCounterIcon: HTMLDivElement;
+    public chosenDeckProgressTrack: HTMLDivElement;
+    public chosenDeckProgressFill: HTMLDivElement;
 
     public currentDeckInfo: HTMLDivElement;
     public currentDeckName: HTMLDivElement;
@@ -89,6 +91,11 @@ export default class InfoSectionComponent {
         this.chosenDeckSubDeckCounterIcon.addClass("sr-chosen-deck-subdeck-counter-icon");
         setIcon(this.chosenDeckSubDeckCounterIcon, "layers");
 
+        this.chosenDeckProgressTrack = this.infoSection.createDiv();
+        this.chosenDeckProgressTrack.addClass("sr-card-progress-track");
+        this.chosenDeckProgressFill = this.chosenDeckProgressTrack.createDiv();
+        this.chosenDeckProgressFill.addClass("sr-card-progress-fill");
+
         this.currentDeckInfo = this.deckProgressInfo.createDiv();
         this.currentDeckInfo.addClass("sr-is-hidden");
         this.currentDeckInfo.addClass("sr-current-deck-info");
@@ -137,13 +144,31 @@ export default class InfoSectionComponent {
         deckStats: DeckStats,
         totalCardsInSession: number,
         totalDecksInSession: number,
+        historyOffset: number = 0,
+        completionCardVisible: boolean = false,
     ) {
         const chosenDeckStats = deckStats;
+        const completedCards = totalCardsInSession - chosenDeckStats.cardsInQueueCount;
+        const visibleCompletedCards = Math.max(0, completedCards - historyOffset);
+        const dummyTotalCards = completionCardVisible
+            ? totalCardsInSession + 1
+            : totalCardsInSession;
+        const visibleCurrentCardPosition = completionCardVisible
+            ? dummyTotalCards
+            : totalCardsInSession > 0
+              ? Math.min(totalCardsInSession, visibleCompletedCards + 1)
+              : 0;
+        const progressRatio = completionCardVisible
+            ? 1
+            : totalCardsInSession > 0
+              ? visibleCompletedCards / totalCardsInSession
+              : 0;
 
         this.chosenDeckName.setText(`${chosenDeck.deckName}`);
         this.chosenDeckCardCounter.setText(
-            `${totalCardsInSession - chosenDeckStats.cardsInQueueCount}/${totalCardsInSession}`,
+            `${visibleCurrentCardPosition}/${dummyTotalCards}`,
         );
+        this.chosenDeckProgressFill.style.width = `${Math.max(0, Math.min(100, progressRatio * 100))}%`;
 
         if (chosenDeck.subdecks.length === 0) {
             if (!this.chosenDeckSubDeckCounterWrapper.hasClass("sr-is-hidden")) {
@@ -167,6 +192,8 @@ export default class InfoSectionComponent {
         currentDeckStats: DeckStats,
         flashcardCardOrder: string,
         currentDeckTotalCardsInQueue: number,
+        historyOffset: number = 0,
+        completionCardVisible: boolean = false,
     ) {
         if (chosenDeck.subdecks.length === 0) {
             if (!this.currentDeckInfo.hasClass("sr-is-hidden")) {
@@ -183,8 +210,19 @@ export default class InfoSectionComponent {
 
         const isRandomMode = flashcardCardOrder === "EveryCardRandomDeckAndCard";
         if (!isRandomMode) {
+            const completedCardsInDeck =
+                currentDeckTotalCardsInQueue - currentDeckStats.cardsInQueueOfThisDeckCount;
+            const visibleCompletedCardsInDeck = Math.max(0, completedCardsInDeck - historyOffset);
+            const dummyTotalCardsInDeck = completionCardVisible
+                ? currentDeckTotalCardsInQueue + 1
+                : currentDeckTotalCardsInQueue;
+            const visibleCurrentCardPositionInDeck = completionCardVisible
+                ? dummyTotalCardsInDeck
+                : currentDeckTotalCardsInQueue > 0
+                  ? Math.min(currentDeckTotalCardsInQueue, visibleCompletedCardsInDeck + 1)
+                  : 0;
             this.currentDeckCardCounter.setText(
-                `${currentDeckTotalCardsInQueue - currentDeckStats.cardsInQueueOfThisDeckCount}/${currentDeckTotalCardsInQueue}`,
+                `${visibleCurrentCardPositionInDeck}/${dummyTotalCardsInDeck}`,
             );
         }
     }

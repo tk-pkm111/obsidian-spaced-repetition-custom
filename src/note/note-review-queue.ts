@@ -54,6 +54,21 @@ export class NoteReviewQueue {
         }
     }
 
+    removeNoteByPath(path: string): void {
+        for (const reviewDeck of this._reviewDecks.values()) {
+            reviewDeck.newNotes.splice(
+                0,
+                reviewDeck.newNotes.length,
+                ...reviewDeck.newNotes.filter((n) => n.path !== path),
+            );
+            reviewDeck.scheduledNotes.splice(
+                0,
+                reviewDeck.scheduledNotes.length,
+                ...reviewDeck.scheduledNotes.filter((sn) => sn.note.path !== path),
+            );
+        }
+    }
+
     updateScheduleInfo(note: ISRFile, scheduleInfo: RepItemScheduleInfo): void {
         for (const reviewDeck of this.reviewDecks.values()) {
             const isNewNoteInDeck = reviewDeck.newNotes.some(

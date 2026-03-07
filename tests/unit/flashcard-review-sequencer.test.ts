@@ -344,6 +344,25 @@ describe("skipCurrentCard", () => {
         skipAndCheckNoRemainingCards(c);
     });
 
+    test("After skipping all cards and re-entering deck, skipped cards are restored", async () => {
+        const c: TestContext = await setupSample1(FlashcardReviewMode.Review, DEFAULT_SETTINGS);
+        expect(c.reviewSequencer.currentCard.front).toEqual("Q2");
+
+        // Skip all cards
+        skipThenCheckCardFront(c.reviewSequencer, "Q1");
+        skipThenCheckCardFront(c.reviewSequencer, "Q3");
+        skipThenCheckCardFront(c.reviewSequencer, "Q4");
+        skipThenCheckCardFront(c.reviewSequencer, "Q5");
+        skipThenCheckCardFront(c.reviewSequencer, "Q6");
+        skipAndCheckNoRemainingCards(c);
+
+        // Re-enter the deck (simulates user clicking the deck again)
+        c.reviewSequencer.setCurrentDeck(TopicPath.emptyPath);
+
+        // Skipped cards should be restored, deck should not be dead
+        expect(c.reviewSequencer.hasCurrentCard).toEqual(true);
+    });
+
     test("Skipping a card skips all sibling cards", async () => {
         const text: string = `
 #flashcards Q1::A1
@@ -1029,7 +1048,7 @@ Q4::A4 <!--SR:!2023-01-21,15,290-->
             expect(c.reviewSequencer.currentCard.front).toEqual("Q4"); // This is the first card as we are using orderDueFirstSequential
             expect(c.getDeckStats("#flashcards")).toEqual(new DeckStats(4, 1, 3, 4, 1, 3, 4, 0, 1));
             c.reviewSequencer.skipCurrentCard();
-            // One less due card
+            // dueCount drops to 0 (card removed from remaining deck tree), queue count reduced
             expect(c.getDeckStats("#flashcards")).toEqual(new DeckStats(4, 0, 3, 3, 0, 3, 3, 0, 1));
         });
 
@@ -1050,7 +1069,7 @@ Q4::A4 <!--SR:!2023-01-21,15,290-->
 
             await checkStats(c, "#flashcards", [
                 [new DeckStats(4, 1, 3, 4, 1, 3, 4, 0, 1), "Q4", ReviewResponse.Easy], // This is the first card as we are using orderDueFirstSequential
-                [new DeckStats(4, 0, 3, 3, 0, 3, 3, 0, 1), "Q1", ReviewResponse.Easy], // Iterated through all the due cards, now the new ones
+                [new DeckStats(4, 0, 3, 3, 0, 3, 3, 0, 1), "Q1", ReviewResponse.Easy], // dueCount drops to 0 (card removed from remaining)
                 [new DeckStats(4, 0, 2, 2, 0, 2, 2, 0, 1), "Q2", ReviewResponse.Easy],
             ]);
         });

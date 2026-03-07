@@ -2,7 +2,8 @@ import { TagCache } from "obsidian";
 
 import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info";
 import { Card } from "src/card/card";
-import { Question, QuestionText } from "src/card/questions/question";
+import { parseCornellQuestions } from "src/card/questions/cornell";
+import { CardType, Question, QuestionText } from "src/card/questions/question";
 import { CardFrontBack, CardFrontBackUtil } from "src/card/questions/question-type";
 import { DataStore } from "src/data-stores/base/data-store";
 import { TopicPath, TopicPathList } from "src/deck/topic-path";
@@ -37,6 +38,9 @@ export class NoteQuestionParser {
 
     // flashcardTagList filtered to those within the note's content and are note-level tags (i.e. not question specific)
     contentTopicPathInfo: TopicPathList[];
+
+    frontmatterCornellTopicPathList: TopicPathList;
+    contentCornellTopicPathInfo: TopicPathList[];
 
     questionList: Question[];
 
@@ -77,11 +81,16 @@ export class NoteQuestionParser {
                 noteText,
                 textDirection,
                 folderTopicPath,
-                this.tagCacheList,
+                tagCompleteList,
             );
 
             // For each question, determine it's TopicPathList
-            [this.frontmatterTopicPathList, this.contentTopicPathInfo] =
+            [
+                this.frontmatterTopicPathList,
+                this.contentTopicPathInfo,
+                this.frontmatterCornellTopicPathList,
+                this.contentCornellTopicPathInfo,
+            ] =
                 this.analyseTagCacheList(tagCompleteList);
             for (const question of this.questionList) {
                 question.topicPathList = this.determineQuestionTopicPathList(question);
@@ -154,7 +163,9 @@ export class NoteQuestionParser {
         };
 
         // We pass contentText which has the frontmatter blanked out; see extractFrontmatter for reasoning
-        return parse(this.contentText, parserOptions);
+        return parse(this.contentText, parserOptions)
+            .concat(parseCornellQuestions(this.contentText))
+            .sort((a, b) => a.firstLineNum - b.firstLineNum);
     }
 
     private createQuestionObject(
@@ -210,7 +221,9 @@ export class NoteQuestionParser {
     //      - All tags within frontmatter grouped together (note that multiple tags
     //      within frontmatter appear on separate lines)
     //
-    private analyseTagCacheList(tagCacheList: TagCache[]): [TopicPathList, TopicPathList[]] {
+    private analyseTagCacheList(
+        tagCacheList: TagCache[],
+    ): [TopicPathList, TopicPathList[], TopicPathList, TopicPathList[]] {
         // The tag (e.g. "#flashcards") must be a valid flashcard tag as per the user settings
         this.flashcardTagList = tagCacheList.filter((item) =>
             SettingsUtil.isFlashcardTag(this.settings, item.tag),
@@ -233,13 +246,29 @@ export class NoteQuestionParser {
             this.flashcardTagList,
             frontmatterLineCount,
         );
+        const cornellTagList = this.flashcardTagList.filter((item) =>
+            this.isCornellTagText(item.tag),
+        );
+        const frontmatterCornellTopicPathList: TopicPathList =
+            this.determineFrontmatterTopicPathList(cornellTagList, frontmatterLineCount, false);
+        const contentCornellTopicPathList: TopicPathList[] = this.determineContentTopicPathList(
+            cornellTagList,
+            frontmatterLineCount,
+            false,
+        );
 
-        return [frontmatterTopicPathList, contentTopicPathList];
+        return [
+            frontmatterTopicPathList,
+            contentTopicPathList,
+            frontmatterCornellTopicPathList,
+            contentCornellTopicPathList,
+        ];
     }
 
     private determineFrontmatterTopicPathList(
         flashcardTagList: TagCache[],
         frontmatterLineCount: number,
+        excludeCornellTag: boolean = true,
     ): TopicPathList {
         let result: TopicPathList = null;
 
@@ -262,6 +291,7 @@ export class NoteQuestionParser {
                     result = this.createTopicPathList(
                         frontmatterTagCacheList,
                         frontmatterTagPseudoLineNum,
+                        excludeCornellTag,
                     );
             }
         }
@@ -271,6 +301,7 @@ export class NoteQuestionParser {
     private determineContentTopicPathList(
         flashcardTagList: TagCache[],
         frontmatterLineCount: number,
+        excludeCornellTag: boolean = true,
     ): TopicPathList[] {
         const result: TopicPathList[] = [] as TopicPathList[];
 
@@ -288,7 +319,12 @@ export class NoteQuestionParser {
             if (list.length != 0) {
                 const startLineNum: number = list[0].position.start.line;
                 if (startLineNum != tag.position.start.line) {
-                    result.push(this.createTopicPathList(list, startLineNum));
+                    const topicPathList = this.createTopicPathList(
+                        list,
+                        startLineNum,
+                        excludeCornellTag,
+                    );
+                    if (topicPathList) result.push(topicPathList);
                     list = [] as TagCache[];
                 }
             }
@@ -296,7 +332,8 @@ export class NoteQuestionParser {
         }
         if (list.length > 0) {
             const startLineNum: number = list[0].position.start.line;
-            result.push(this.createTopicPathList(list, startLineNum));
+            const topicPathList = this.createTopicPathList(list, startLineNum, excludeCornellTag);
+            if (topicPathList) result.push(topicPathList);
         }
         return result;
     }
@@ -311,17 +348,38 @@ export class NoteQuestionParser {
         return !isQuestionSpecific;
     }
 
-    private createTopicPathList(tagCacheList: TagCache[], lineNum: number): TopicPathList {
+    private createTopicPathList(
+        tagCacheList: TagCache[],
+        lineNum: number,
+        excludeCornellTag: boolean = true,
+    ): TopicPathList {
         const list: TopicPath[] = [] as TopicPath[];
         for (const tagCache of tagCacheList) {
+            if (excludeCornellTag && this.isCornellTagText(tagCache.tag)) continue;
             list.push(TopicPath.getTopicPathFromTag(tagCache.tag));
         }
+        if (list.length === 0) return null;
         return new TopicPathList(list, lineNum);
     }
 
-    private createTopicPathListFromSingleTag(tagCache: TagCache): TopicPathList {
+    private createTopicPathListFromSingleTag(
+        tagCache: TagCache,
+        excludeCornellTag: boolean = true,
+    ): TopicPathList {
+        if (excludeCornellTag && this.isCornellTagText(tagCache.tag)) return null;
         const list: TopicPath[] = [TopicPath.getTopicPathFromTag(tagCache.tag)];
         return new TopicPathList(list, tagCache.position.start.line);
+    }
+
+    private isCornellTagText(tag: string): boolean {
+        if (!TopicPath.isValidTag(tag)) return false;
+        const topicPath = TopicPath.getTopicPathFromTag(tag);
+        return this.isCornellTopicPath(topicPath);
+    }
+
+    private isCornellTopicPath(topicPath: TopicPath): boolean {
+        if (!topicPath || !topicPath.hasPath) return false;
+        return topicPath.path[0]?.toLowerCase() === "cornell";
     }
 
     // A question can be associated with multiple topics (hence returning TopicPathList and not just TopicPath).
@@ -331,6 +389,10 @@ export class NoteQuestionParser {
     // Else the first TopicPathList prior to the question (in the order present in the file) is returned.
     // That could be either the tags within the note's frontmatter, or tags on lines within the note's content.
     private determineQuestionTopicPathList(question: Question): TopicPathList {
+        if (question.questionType === CardType.Cornell) {
+            return this.determineCornellQuestionTopicPathList(question);
+        }
+
         let result: TopicPathList;
         if (this.settings.convertFoldersToDecks) {
             result = new TopicPathList([this.folderTopicPath]);
@@ -338,10 +400,12 @@ export class NoteQuestionParser {
             // If present, the question specific TopicPath takes precedence over everything else
             const questionText: QuestionText = question.questionText;
             if (questionText.topicPathWithWs)
-                result = new TopicPathList(
-                    [questionText.topicPathWithWs.topicPath],
-                    question.parsedQuestionInfo.firstLineNum,
-                );
+                result = this.isCornellTopicPath(questionText.topicPathWithWs.topicPath)
+                    ? null
+                    : new TopicPathList(
+                          [questionText.topicPathWithWs.topicPath],
+                          question.parsedQuestionInfo.firstLineNum,
+                      );
             else {
                 // By default we start off with any TopicPathList present in the frontmatter
                 result = this.frontmatterTopicPathList;
@@ -363,6 +427,29 @@ export class NoteQuestionParser {
                 }
             }
         }
+        return result;
+    }
+
+    private determineCornellQuestionTopicPathList(question: Question): TopicPathList {
+        let result = this.frontmatterCornellTopicPathList;
+
+        for (let i = this.contentCornellTopicPathInfo.length - 1; i >= 0; i--) {
+            const topicPathList = this.contentCornellTopicPathInfo[i];
+            if (topicPathList.lineNum < question.parsedQuestionInfo.firstLineNum) {
+                result = topicPathList;
+                break;
+            }
+        }
+
+        if (!result) {
+            const firstCornellTag = this.flashcardTagList.find((item) =>
+                this.isCornellTagText(item.tag),
+            );
+            if (firstCornellTag) {
+                result = this.createTopicPathListFromSingleTag(firstCornellTag, false);
+            }
+        }
+
         return result;
     }
 }
