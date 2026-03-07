@@ -10,6 +10,39 @@ Fight the forgetting curve by reviewing flashcards & notes using spaced repetiti
 - The plugin has been translated into _Arabic, Chinese, Czech, Dutch, French, German, Italian, Korean, Japanese, Polish, Portuguese, Spanish, Russian, Turkish, and Ukrainian_ by the Obsidian community 😄.
     - To help translate this plugin to your language, check the [translation guide here](https://stephenmwangi.com/obsidian-spaced-repetition/contributing/#translating_1).
 
+## 日本語: この fork について
+
+このリポジトリは、`Spaced Repetition` プラグインをベースにしたカスタム fork です。  
+主に以下の改善を含みます。
+
+- レビュー画面とデッキ画面の UI 改善
+- フローティングバーによる一時最小化と復帰
+- ノートタイトルから元ファイルへ移動
+- 画像 / Excalidraw 埋め込みの表示改善
+- 右クリックからのフラッシュカード化
+- `#cornell` + `>[!cue]` 記法の Cornell カード対応
+
+## 日本語: BRAT でのインストール
+
+このプラグインは現時点では Obsidian の公式コミュニティプラグイン一覧には未登録です。  
+そのため、インストールには `BRAT` を使います。
+
+### 手順
+
+1. Obsidian で `BRAT` をインストールする
+2. `BRAT` を開く
+3. `Add Beta plugin` を選ぶ
+4. 以下の GitHub リポジトリ URL を入力する
+
+   `https://github.com/tk-pkm111/obsidian-spaced-repetition-custom`
+
+5. 追加後、`Spaced Repetition (Custom)` を有効化する
+
+### 更新
+
+- 新しい release を公開した後、BRAT 経由で更新できます
+- 手動更新する場合は、release assets の `main.js` / `manifest.json` / `styles.css` を差し替えてください
+
 ## ⚡ Features
 
 #### 🗃️ Reviewing Flashcards
