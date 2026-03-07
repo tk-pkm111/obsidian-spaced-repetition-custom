@@ -1,156 +1,112 @@
-# Obsidian Spaced Repetition Plugin
+# Spaced Repetition (Custom)
 
-<img src="https://img.shields.io/github/downloads/st3v3nmw/obsidian-spaced-repetition/total" /> <img src="https://img.shields.io/github/downloads/st3v3nmw/obsidian-spaced-repetition/latest/total?style=flat-square" /> <img src="https://img.shields.io/github/manifest-json/v/st3v3nmw/obsidian-spaced-repetition?style=flat-square" /> <img alt="Codecov" src="https://img.shields.io/codecov/c/gh/st3v3nmw/obsidian-spaced-repetition">
+Obsidian 用の間隔反復プラグインです。  
+このリポジトリは、既存の `Spaced Repetition` プラグインをベースにしたカスタム fork です。
 
-Fight the forgetting curve by reviewing flashcards & notes using spaced repetition 💡
+## 概要
 
-- For more information on how to use the plugin, check either the [tldr](#usage-tldr) or the [documentation](https://stephenmwangi.com/obsidian-spaced-repetition/).
-- Raise an [issue](https://github.com/st3v3nmw/obsidian-spaced-repetition/issues/) if you have a feature request or a bug report.
-- Visit the [discussions](https://github.com/st3v3nmw/obsidian-spaced-repetition/discussions/) section for Q&A help, feedback, and general discussion.
-- The plugin has been translated into _Arabic, Chinese, Czech, Dutch, French, German, Italian, Korean, Japanese, Polish, Portuguese, Spanish, Russian, Turkish, and Ukrainian_ by the Obsidian community 😄.
-    - To help translate this plugin to your language, check the [translation guide here](https://stephenmwangi.com/obsidian-spaced-repetition/contributing/#translating_1).
-
-## 日本語: この fork について
-
-このリポジトリは、`Spaced Repetition` プラグインをベースにしたカスタム fork です。  
-主に以下の改善を含みます。
+この fork では、主に次の改善を加えています。
 
 - レビュー画面とデッキ画面の UI 改善
-- フローティングバーによる一時最小化と復帰
-- ノートタイトルから元ファイルへ移動
-- 画像 / Excalidraw 埋め込みの表示改善
+- フローティングバーによる最小化 / 復帰
+- 元ノートへの直接移動
+- 画像 / Excalidraw 埋め込み表示の改善
 - 右クリックからのフラッシュカード化
-- `#cornell` + `>[!cue]` 記法の Cornell カード対応
+- `#cornell` と `>[!cue]` 記法を使った Cornell カード対応
 
-## 日本語: BRAT でのインストール
+## インストール
 
 このプラグインは現時点では Obsidian の公式コミュニティプラグイン一覧には未登録です。  
-そのため、インストールには `BRAT` を使います。
+そのため、`BRAT` を使ってインストールしてください。
 
-### 手順
+### BRAT での導入手順
 
 1. Obsidian で `BRAT` をインストールする
 2. `BRAT` を開く
 3. `Add Beta plugin` を選ぶ
-4. 以下の GitHub リポジトリ URL を入力する
+4. 次の GitHub リポジトリ URL を入力する
 
-   `https://github.com/tk-pkm111/obsidian-spaced-repetition-custom`
+`https://github.com/tk-pkm111/obsidian-spaced-repetition-custom`
 
 5. 追加後、`Spaced Repetition (Custom)` を有効化する
 
-### 更新
+### 更新方法
 
 - 新しい release を公開した後、BRAT 経由で更新できます
-- 手動更新する場合は、release assets の `main.js` / `manifest.json` / `styles.css` を差し替えてください
+- 手動更新する場合は、release assets の `main.js`、`manifest.json`、`styles.css` を差し替えてください
 
-## ⚡ Features
+## 主な使い方
 
-#### 🗃️ Reviewing Flashcards
+### フラッシュカード
 
-- [Getting started](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/flashcards-overview/) (Using Obsidian's hierarchical tags or folder structure)
-- Creating Flashcards
-    - [Single-line style](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/q-and-a-cards/#single-line-basic) (`Question::Answer`)
-    - [Single-line reversed style](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/q-and-a-cards/#single-line-bidirectional) (`Question:::Answer`)
-    - [Multi-line style](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/q-and-a-cards/#multi-line-basic) (Separated by `?`)
-    - [Multi-line reversed style](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/q-and-a-cards/#multi-line-bidirectional) (Separated by `??`)
-    - [Cloze cards](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/cloze-cards/) (`==highlight==` your cloze deletions!, `**bolded text**`, `{{text in curly braces}}`, or use custom cloze patterns)
-    - Rich text support in flashcards (inherited from Obsidian)
-        - Images, Audio, & Video
-        - LaTeX
-        - Code syntax highlighting
-        - Footnotes
-- [Organize Decks](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/decks/) (Using Obsidian's hierarchical tags or folder structure)
-- [Card context - automatic titles based on headings](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/reviewing/#context) (i.e. `Note title > Heading 1 > Subheading`)
+フラッシュカード用タグ:
 
-#### 📄 Reviewing Notes
+- `#flashcards`
 
-- [Getting started](https://stephenmwangi.com/obsidian-spaced-repetition/notes/)
-- [Due Notes for review](https://stephenmwangi.com/obsidian-spaced-repetition/notes/#note-review-queue)
-- [How to review a note](https://stephenmwangi.com/obsidian-spaced-repetition/notes/#reviewing)
+基本記法:
 
-#### [Statistics 📈](https://stephenmwangi.com/obsidian-spaced-repetition/flashcards/statistics/)
+```md
+質問 ?? 回答
+```
 
-## 🚀 Usage TLDR
+複数行カード:
 
-#### Creating Decks
+```md
+質問
+>
+回答
+```
 
-1. Add the tag `#flashcards` in a note, where you want to write your cards
-2. If you want to have your cards in a specific sub deck, then add your sub deck name to the tag like so: `#flashcards/YOUR_SUB_DECK_NAME`
-3. Write your card in the note which where you've added your tag
+### Cornell カード
 
-#### Creating Cards
+Cornell 用タグ:
 
-1. Decide what card type you need:
-    - Single line -> Card format:
-      `Question::Answer`
-    - Single line reversable -> Card format:
-      `Question:::Answer`
-    - Multi line -> Card format:
-        ```
-        Question
-        ?
-        Answer
-        ```
-    - Multi line reversable -> Card format:
-        ```
-        Question
-        ??
-        Answer
-        ```
-2. Write your card (In one of those formats) in a note that you have tagged as a deck
+- `#cornell`
 
-#### Reviewing Cards
+対応記法:
 
-1. Open the list of all decks with either of two commands(ctrl+p):
-    - _Review Flashcards from all notes_
-      -> Here the algorithm decides based on your past reviews, which cards are due to review
-    - _Select a deck to cram_
-      -> All decks and all cards are reviewable and the algorithm is fully ignored
-2. Or open the list of all decks within your currently opened note(ctrl+p):
-    - _Review flashcards in this note_
-      -> Here the algorithm decides based on your past reviews, which cards from this note are due to review
-    - _Cram flashcards in this note_
-      -> All decks and all cards from this note are reviewable and the algorithm is fully ignored
-3. Select a deck and rate your ability to remember the answer to the current question
-   -> this tells the algorithm what you know well and what you don't
+```md
+>[!cue] 質問
+>
+回答
+```
 
-#### Creating & reviewing whole notes
+例:
 
-Sometimes it makes more sense to recall a whole note, when it isn't just pure facts which you have to learn.
-This is where marking a note for review comes in handy.
+```md
+#cornell
 
-1. Just like with decks add the tag `#review` to your note to mark them as reviewable
-2. To see which notes are due for review open the note review queue via the command(ctrl+p): _Open Notes Review Queue in sidebar_
-3. There you can open up the notes for review, just as if you would open them up in your file explorer, only that they are sorted her by when they are due for review
-4. Once you have recalled/reviewed your note you can rate your recall ability by executing the command(ctrl+p, or just via the 3 dots next to the note): _Review note as YOUR_RATING_
-    - The algorithm will take your rating into account to calculate a new due date, when you have to review it again
+---
+>[!cue] フランスの首都は？
+>
+パリ
+```
 
-## ℹ️ Info on the next few releases
+## この fork の方向性
 
-- The next few releases will be more focused on fixing bugs and on cleaning up/making the code more maintainable.
-    - The first main goal is to overhaul the card parser, so that it is more flexible and less error prone.
-    - The second main goal is to refactor the business logic, so that it is more maintainable and easier to understand.
-- Along the way I might be adding some minor features.
-- The next big feature will be major improvements to the review of whole notes
-- After that is done I will have a look into implementing the FSRS algorithm, as it was often requested.
-    - But I first want to do the clean up the code, or else it might get too messy/complicated to implement it.
+この fork は、見た目と操作性を強く改善しつつ、Obsidian 上での実用性を高めることを目的にしています。
 
-_- Kyle (Current Maintainer) -_
+特に以下を重視しています。
 
-## 🔗 Links & Resources
+- スマホライクで触りやすい UI
+- ノートとレビュー画面の往復をしやすい導線
+- 画像や図解を含む学習に向いた表示
+- Cornell ノートと通常フラッシュカードの併用
 
-- [Documentation](https://stephenmwangi.com/obsidian-spaced-repetition/).
-- [Roadmap](https://github.com/st3v3nmw/obsidian-spaced-repetition/projects/3/) (Sry, slightly out of date)
-- [Issues](https://github.com/st3v3nmw/obsidian-spaced-repetition/issues/)
+## リリース
 
-## 💻 Support Development
+最新 release:
 
-<div style="display: flex; gap: 10px; flex-direction: row; flex-wrap: wrap; ">
-    <div style="font-size: 1em; font-weight: bold; white-space: nowrap;">Stephen Mwangi (Owner):</div>
-    <a href='https://ko-fi.com/M4M44DEN6' target='_blank'><img height='30' style='border:0px;height:30px;' src='https://cdn.ko-fi.com/cdn/kofi3.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-</div>
+- `1.14.0-custom.0`
+- https://github.com/tk-pkm111/obsidian-spaced-repetition-custom/releases
 
-<div style="display: flex; gap: 10px; flex-direction: row; flex-wrap: wrap; ">
-    <div style="font-size: 1em; font-weight: bold; white-space: nowrap;">Kyle Klus (Current Maintainer):</div>
-    <a href='https://github.com/KyleKlus' target='_blank'>Github Profile</a>
-</div>
+## 元プロジェクトについて
+
+このリポジトリは、以下のプロジェクトをベースにしています。
+
+- https://github.com/st3v3nmw/obsidian-spaced-repetition
+
+## ライセンス
+
+このリポジトリは upstream のライセンス条件を引き継ぎます。  
+詳細は `LICENSE` を参照してください。
