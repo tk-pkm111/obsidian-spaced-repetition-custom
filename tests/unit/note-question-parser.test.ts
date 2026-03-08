@@ -933,6 +933,72 @@ describe("Cornell questions", () => {
         ]);
     });
 
+    test("Cue blocks stop at an explicit delimiter before trailing note text", async () => {
+        const noteText = `#cornell
+
+---
+>[!cue] aaa
+>
+
+aaa
+---
+
+aaaa`;
+
+        const noteFile: ISRFile = new UnitTestSRFile(noteText);
+        const questionList = await parserWithCornellSettings.createQuestionList(
+            noteFile,
+            TextDirection.Ltr,
+            TopicPath.emptyPath,
+            true,
+        );
+
+        expect(questionList).toMatchObject([
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                cards: [new Card({ front: "aaa", back: "aaa" })],
+            },
+        ]);
+    });
+
+    test("A single delimiter can separate consecutive Cornell cards", async () => {
+        const noteText = `#cornell
+
+---
+>[!cue] aaa
+>
+
+aaa
+---
+>[!cue] bbb
+>
+
+bbbb
+---`;
+
+        const noteFile: ISRFile = new UnitTestSRFile(noteText);
+        const questionList = await parserWithCornellSettings.createQuestionList(
+            noteFile,
+            TextDirection.Ltr,
+            TopicPath.emptyPath,
+            true,
+        );
+
+        expect(questionList).toMatchObject([
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                cards: [new Card({ front: "aaa", back: "aaa" })],
+            },
+            {
+                questionType: CardType.Cornell,
+                topicPathList: TopicPathList.fromPsv("#cornell", 0),
+                cards: [new Card({ front: "bbb", back: "bbbb" })],
+            },
+        ]);
+    });
+
     test("Question mark syntax with only #cornell is still ignored", async () => {
         const noteText = `#cornell
 フランスの首都は？ ?? パリ`;

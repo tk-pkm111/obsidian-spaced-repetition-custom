@@ -1,7 +1,7 @@
 {
     "id": "obsidian-spaced-repetition-custom",
     "name": "Spaced Repetition (Custom)",
-    "version": "1.14.0-custom.4",
+    "version": "1.14.0-custom.5",
     "minAppVersion": "1.2.8",
     "description": "Fight the forgetting curve by reviewing flashcards & entire notes. Custom fork with mobile/layout fixes.",
     "author": "Stephen Mwangi (forked by tk-pkm111)",

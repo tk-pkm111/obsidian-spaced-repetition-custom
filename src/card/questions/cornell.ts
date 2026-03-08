@@ -44,18 +44,9 @@ export function parseCornellQuestions(text: string): ParsedQuestionInfo[] {
 
         let blockEndLine = lines.length - 1;
         for (let j = i + 1; j < lines.length; j++) {
-            if (isCornellCueLine(lines[j])) {
+            if (HORIZONTAL_RULE_REGEX.test(lines[j]) || isCornellCueLine(lines[j])) {
                 blockEndLine = j - 1;
                 break;
-            }
-
-            if (HORIZONTAL_RULE_REGEX.test(lines[j])) {
-                let k = j + 1;
-                while (k < lines.length && lines[k].trim() === "") k++;
-                if (k < lines.length && isCornellCueLine(lines[k])) {
-                    blockEndLine = j - 1;
-                    break;
-                }
             }
         }
 
