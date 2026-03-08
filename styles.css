@@ -654,12 +654,12 @@ body:not(.is-mobile) .sr-response-button.sr-easy-button::after {
 
 .sr-card-container .sr-main-wrapper {
     min-height: 0;
-    gap: 10px;
+    gap: 8px;
     position: relative;
 }
 
 .sr-card-container .sr-deck-progress-info {
-    padding: 4px 8px 0;
+    padding: 2px 8px 0;
 }
 
 .sr-card-container .sr-card-progress-track {
@@ -696,6 +696,8 @@ body:not(.is-mobile) .sr-response-button.sr-easy-button::after {
 }
 
 .sr-card-container .sr-scroll-wrapper {
+    flex: 1 1 auto;
+    min-height: 0;
     border-radius: 24px;
     background: linear-gradient(150deg, var(--sr-glass-bg), rgb(255 255 255 / 3%));
     border: 1px solid var(--sr-glass-border);
@@ -706,7 +708,7 @@ body:not(.is-mobile) .sr-response-button.sr-easy-button::after {
 }
 
 .sr-card-container .sr-scroll-wrapper .sr-content {
-    padding: 20px 18px 12px;
+    padding: 18px 16px 14px;
     line-height: 1.72;
     transform-style: preserve-3d;
     backface-visibility: hidden;

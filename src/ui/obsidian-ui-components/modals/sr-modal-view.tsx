@@ -217,7 +217,6 @@ export class SRModalView extends Modal {
             e.stopPropagation();
             this.close();
         };
-        bar.onclick = () => this._restoreFromFloatingBar();
         this._setupFloatingBarDrag(bar);
         if (this.floatingBarPosition) {
             this._applyFloatingBarPosition(bar, this.floatingBarPosition.left, this.floatingBarPosition.top);

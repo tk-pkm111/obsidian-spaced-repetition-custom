@@ -3,6 +3,15 @@ import { DataStoreName } from "src/data-stores/base/data-store";
 import { t } from "src/lang/helpers";
 import { pathMatchesPattern } from "src/utils/fs";
 
+const LEGACY_FLASHCARD_MODAL_HEIGHT_PERCENTAGE = 60;
+const LEGACY_FLASHCARD_MODAL_WIDTH_PERCENTAGE = 60;
+const DEFAULT_FLASHCARD_MODAL_HEIGHT_PERCENTAGE = 72;
+const DEFAULT_FLASHCARD_MODAL_WIDTH_PERCENTAGE = 72;
+
+const LEGACY_FLASHCARD_HARD_LABELS = new Set(["Hard"]);
+const LEGACY_FLASHCARD_GOOD_LABELS = new Set(["Good"]);
+const LEGACY_FLASHCARD_EASY_LABELS = new Set(["Easy"]);
+
 export interface SRSettings {
     // flashcards
     flashcardTags: string[];
@@ -104,8 +113,8 @@ export const DEFAULT_SETTINGS: SRSettings = {
     initiallyExpandAllSubdecksInTree: false,
     showContextInCards: true,
     showIntervalInReviewButtons: true,
-    flashcardHeightPercentage: 60,
-    flashcardWidthPercentage: 60,
+    flashcardHeightPercentage: DEFAULT_FLASHCARD_MODAL_HEIGHT_PERCENTAGE,
+    flashcardWidthPercentage: DEFAULT_FLASHCARD_MODAL_WIDTH_PERCENTAGE,
     flashcardHeightPercentageMobile: 100,
     flashcardWidthPercentageMobile: 100,
     flashcardEasyText: t("EASY"),
@@ -159,6 +168,48 @@ export function upgradeSettings(settings: SRSettings) {
 
         if (settings.convertCurlyBracketsToClozes)
             settings.clozePatterns.push("{{[123;;]answer[;;hint]}}");
+    }
+
+    upgradeFlashcardModalSizeDefaults(settings);
+    upgradeFlashcardReviewButtonLabels(settings);
+}
+
+function upgradeFlashcardModalSizeDefaults(settings: SRSettings): void {
+    if (
+        settings.flashcardHeightPercentage == null ||
+        settings.flashcardHeightPercentage === LEGACY_FLASHCARD_MODAL_HEIGHT_PERCENTAGE
+    ) {
+        settings.flashcardHeightPercentage = DEFAULT_FLASHCARD_MODAL_HEIGHT_PERCENTAGE;
+    }
+
+    if (
+        settings.flashcardWidthPercentage == null ||
+        settings.flashcardWidthPercentage === LEGACY_FLASHCARD_MODAL_WIDTH_PERCENTAGE
+    ) {
+        settings.flashcardWidthPercentage = DEFAULT_FLASHCARD_MODAL_WIDTH_PERCENTAGE;
+    }
+}
+
+function upgradeFlashcardReviewButtonLabels(settings: SRSettings): void {
+    if (
+        settings.flashcardHardText == null ||
+        LEGACY_FLASHCARD_HARD_LABELS.has(settings.flashcardHardText)
+    ) {
+        settings.flashcardHardText = t("HARD");
+    }
+
+    if (
+        settings.flashcardGoodText == null ||
+        LEGACY_FLASHCARD_GOOD_LABELS.has(settings.flashcardGoodText)
+    ) {
+        settings.flashcardGoodText = t("GOOD");
+    }
+
+    if (
+        settings.flashcardEasyText == null ||
+        LEGACY_FLASHCARD_EASY_LABELS.has(settings.flashcardEasyText)
+    ) {
+        settings.flashcardEasyText = t("EASY");
     }
 }
 
