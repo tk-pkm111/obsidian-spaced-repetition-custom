@@ -31,6 +31,7 @@ export class SRModalView extends Modal {
     private cardContainer: CardContainer;
     private floatingBarEl: HTMLDivElement | null = null;
     private isMinimized: boolean = false;
+    private isModalScopeSuspended: boolean = false;
     private floatingBarPosition: { left: number; top: number } | null = null;
 
     constructor(
@@ -104,6 +105,11 @@ export class SRModalView extends Modal {
         this._showDecksList();
     }
 
+    close(): void {
+        this._resumeModalScope();
+        super.close();
+    }
+
     onClose(): void {
         this.plugin.uiManager.setSRViewInFocus(false);
         document.body.removeClass("sr-image-toolkit-compat");
@@ -173,6 +179,7 @@ export class SRModalView extends Modal {
         if (this.isMinimized) return;
         this.isMinimized = true;
         this.plugin.uiManager.setSRViewInFocus(false);
+        this._suspendModalScope();
         this.containerEl.addClass("sr-is-hidden");
         this._renderFloatingBar();
     }
@@ -180,6 +187,7 @@ export class SRModalView extends Modal {
     private _restoreFromFloatingBar(): void {
         if (!this.isMinimized) return;
         this.isMinimized = false;
+        this._resumeModalScope();
         this.containerEl.removeClass("sr-is-hidden");
         this.cardContainer.resumeAfterFloatingBarRestore();
         this.plugin.uiManager.setSRViewInFocus(true);
@@ -230,6 +238,23 @@ export class SRModalView extends Modal {
 
     private _restoreToCardPanel(): void {
         this._restoreFromFloatingBar();
+    }
+
+    private _suspendModalScope(): void {
+        if (this.isModalScopeSuspended) return;
+
+        this.app.keymap.popScope(this.scope);
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+        this.isModalScopeSuspended = true;
+    }
+
+    private _resumeModalScope(): void {
+        if (!this.isModalScopeSuspended) return;
+
+        this.app.keymap.pushScope(this.scope);
+        this.isModalScopeSuspended = false;
     }
 
     private _setupFloatingBarDrag(bar: HTMLDivElement): void {
