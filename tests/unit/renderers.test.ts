@@ -23,6 +23,8 @@ import EmulatedPlatform from "src/utils/platform-detector";
 import { TextDirection } from "src/utils/strings";
 import { MobileImagePreviewModal } from "src/ui/obsidian-ui-components/modals/mobile-image-preview-modal";
 
+const mobileImagePreviewModalMock = MobileImagePreviewModal as unknown as jest.Mock;
+
 describe("RenderMarkdownWrapper mobile image preview", () => {
     beforeAll(() => {
         const elementPrototype = HTMLElement.prototype as HTMLElement & {
@@ -41,7 +43,7 @@ describe("RenderMarkdownWrapper mobile image preview", () => {
         document.body.innerHTML = "";
         renderMock.mockReset();
         openMock.mockReset();
-        (MobileImagePreviewModal as jest.Mock).mockClear();
+        mobileImagePreviewModalMock.mockClear();
         platformState.isMobile = false;
         (EmulatedPlatform as jest.Mock).mockReturnValue({ isMobile: false });
         renderMock.mockImplementation((_app, _markdown, el: HTMLElement) => {
@@ -73,7 +75,7 @@ describe("RenderMarkdownWrapper mobile image preview", () => {
         image?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
         await Promise.resolve();
 
-        expect(MobileImagePreviewModal as jest.Mock).toHaveBeenCalledWith(
+        expect(mobileImagePreviewModalMock).toHaveBeenCalledWith(
             app,
             "https://example.com/card.png",
             "preview",
@@ -94,7 +96,7 @@ describe("RenderMarkdownWrapper mobile image preview", () => {
         image?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
         await Promise.resolve();
 
-        expect(MobileImagePreviewModal as jest.Mock).not.toHaveBeenCalled();
+        expect(mobileImagePreviewModalMock).not.toHaveBeenCalled();
         expect(openMock).not.toHaveBeenCalled();
     });
 });

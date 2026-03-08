@@ -1,48 +1,25 @@
-const closeMock = jest.fn();
-
-jest.mock("obsidian", () => {
-    class Modal {
-        app: unknown;
-        modalEl: HTMLDivElement;
-        contentEl: HTMLDivElement;
-
-        constructor(app: unknown) {
-            this.app = app;
-            this.modalEl = document.createElement("div");
-            this.modalEl.className = "modal";
-            this.contentEl = document.createElement("div");
-            this.contentEl.className = "modal-content";
-            this.modalEl.append(this.contentEl);
-        }
-
-        close() {
-            closeMock();
-        }
-    }
-
-    return {
-        App: class {},
-        Modal,
-    };
-});
+jest.mock("obsidian", () => ({
+    App: class {},
+}));
 
 import { MobileImagePreviewModal } from "src/ui/obsidian-ui-components/modals/mobile-image-preview-modal";
 
 describe("MobileImagePreviewModal", () => {
     beforeEach(() => {
-        closeMock.mockReset();
         document.body.innerHTML = "";
     });
 
-    test("renders the preview UI and toggles zoom on image tap", () => {
+    test("renders the preview overlay and toggles zoom on image tap", () => {
         const modal = new MobileImagePreviewModal({} as any, "https://example.com/card.png", "caption");
 
-        modal.onOpen();
+        modal.open();
 
-        const image = modal.contentEl.querySelector(".sr-mobile-image-preview-image");
-        const stage = modal.contentEl.querySelector(".sr-mobile-image-preview-stage");
-        const caption = modal.contentEl.querySelector(".sr-mobile-image-preview-caption");
+        const overlay = document.body.querySelector(".sr-mobile-image-preview-overlay");
+        const image = document.body.querySelector(".sr-mobile-image-preview-image");
+        const stage = document.body.querySelector(".sr-mobile-image-preview-stage");
+        const caption = document.body.querySelector(".sr-mobile-image-preview-caption");
 
+        expect(overlay).not.toBeNull();
         expect(caption?.textContent).toBe("caption");
         expect(image).not.toBeNull();
         expect(stage).not.toBeNull();
@@ -56,19 +33,24 @@ describe("MobileImagePreviewModal", () => {
         expect(image?.classList.contains("is-zoomed")).toBe(false);
     });
 
-    test("closes when the background or close button is pressed", () => {
+    test("closes when the background, close button, or escape key is pressed", () => {
         const modal = new MobileImagePreviewModal({} as any, "https://example.com/card.png", "caption");
 
-        modal.onOpen();
-
-        const stage = modal.contentEl.querySelector(".sr-mobile-image-preview-stage");
-        const closeButton = modal.contentEl.querySelector(
+        modal.open();
+        const closeButton = document.body.querySelector(
             ".sr-mobile-image-preview-close",
         ) as HTMLButtonElement | null;
 
-        stage?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
         closeButton?.click();
+        expect(document.body.querySelector(".sr-mobile-image-preview-overlay")).toBeNull();
 
-        expect(closeMock).toHaveBeenCalledTimes(2);
+        modal.open();
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        expect(document.body.querySelector(".sr-mobile-image-preview-overlay")).toBeNull();
+
+        modal.open();
+        const overlay = document.body.querySelector(".sr-mobile-image-preview-overlay");
+        overlay?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        expect(document.body.querySelector(".sr-mobile-image-preview-overlay")).toBeNull();
     });
 });

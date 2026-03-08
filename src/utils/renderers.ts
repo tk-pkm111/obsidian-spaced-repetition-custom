@@ -33,6 +33,7 @@ export class RenderMarkdownWrapper {
         } else el = containerEl;
 
         MarkdownRenderer.render(this.app, markdownString, el, this.notePath, this.plugin);
+        this.bindMobileImagePreview(el);
 
         // Keep wiki-link navigation support in review UI.
         el.findAll("a.internal-link").forEach((linkEl) => {
@@ -152,9 +153,9 @@ export class RenderMarkdownWrapper {
             srStableImageSrc?: string;
             srBlobFetchPromise?: Promise<void>;
             srFallbackImageSrc?: string;
-            srMobilePreviewBound?: boolean;
         };
         const preparedImage = imageEl as PreparedImage;
+        const isMobilePreviewEnabled = this.isMobilePreviewEnabled();
 
         if (!preparedImage.srBlobPrepared) {
             preparedImage.srBlobPrepared = true;
@@ -164,23 +165,12 @@ export class RenderMarkdownWrapper {
                     this.cacheBlobImageSource(imageEl, currentLoadSrc);
                 }
             });
-            imageEl.addEventListener("click", () => this.prepareImageForToolkit(imageEl), {
-                capture: true,
-            });
+            if (!isMobilePreviewEnabled) {
+                imageEl.addEventListener("click", () => this.prepareImageForToolkit(imageEl), {
+                    capture: true,
+                });
+            }
             imageEl.addEventListener("error", () => this.normalizeBrokenBlobBackedImage(imageEl));
-        }
-
-        if (this.isMobilePreviewEnabled() && !preparedImage.srMobilePreviewBound) {
-            preparedImage.srMobilePreviewBound = true;
-            imageEl.addEventListener(
-                "click",
-                (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    void this.openMobileImagePreview(imageEl);
-                },
-                { capture: true },
-            );
         }
 
         const currentSrc = imageEl.currentSrc || imageEl.src || "";
@@ -193,6 +183,33 @@ export class RenderMarkdownWrapper {
         if (this.isLiveBlobSource(currentSrc)) {
             this.cacheBlobImageSource(imageEl, currentSrc);
         }
+    }
+
+    private bindMobileImagePreview(rootEl: HTMLElement) {
+        type PreviewRoot = HTMLElement & { srMobileImagePreviewBound?: boolean };
+        if (!this.isMobilePreviewEnabled()) return;
+
+        const previewRoot = rootEl as PreviewRoot;
+        if (previewRoot.srMobileImagePreviewBound) return;
+        previewRoot.srMobileImagePreviewBound = true;
+
+        rootEl.addEventListener(
+            "click",
+            (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) return;
+
+                const imageEl = target.closest("img");
+                if (!(imageEl instanceof HTMLImageElement)) return;
+                if (!rootEl.contains(imageEl)) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                void this.openMobileImagePreview(imageEl);
+            },
+            true,
+        );
     }
 
     private prepareImageForToolkit(imageEl: HTMLImageElement) {
