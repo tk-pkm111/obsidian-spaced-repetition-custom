@@ -136,7 +136,6 @@ export class CardContainer {
 
         this.infoSection = new InfoSection(
             this.mainWrapper,
-            this.settings.showContextInCards,
             () => this.backToDeck(),
             this.closeModal ? this.closeModal.bind(this) : undefined,
         );
@@ -153,6 +152,10 @@ export class CardContainer {
             () => this._showAnswer(),
             (response: ReviewResponse) => this._processReview(response),
         );
+
+        if (this.settings.showContextInCards) {
+            this.infoSection.createCardContext(this.mainWrapper);
+        }
     }
 
     /**
@@ -532,7 +535,7 @@ export class CardContainer {
             this._isCompletionCardVisible,
         );
         if (this._isCompletionCardVisible) {
-            this.infoSection.cardContext?.setText("");
+            this.infoSection.clearCardContext();
         } else {
             this.infoSection.updateCardContext(
                 this.settings.showContextInCards,
@@ -545,10 +548,9 @@ export class CardContainer {
 
     private _updateSkipButtonHint(remainingCardsInChosenDeck: number): void {
         const isLastCardInQueue =
-            this._isCompletionCardVisible || (!this._historyItem && remainingCardsInChosenDeck === 1);
-        const tooltip = isLastCardInQueue
-            ? `${t("NEXT")} (${t("DECKS")})`
-            : t("SKIP");
+            this._isCompletionCardVisible ||
+            (!this._historyItem && remainingCardsInChosenDeck === 1);
+        const tooltip = isLastCardInQueue ? `${t("NEXT")} (${t("DECKS")})` : t("SKIP");
         this.controls.skipButton.setTooltip(tooltip);
         this.controls.skipButton.buttonEl.setAttribute("aria-label", tooltip);
     }
@@ -586,7 +588,7 @@ export class CardContainer {
 
         this.clozeInputs.forEach((input) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            input.addEventListener("change", (e) => { });
+            input.addEventListener("change", (e) => {});
         });
     }
 
