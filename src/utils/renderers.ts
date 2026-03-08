@@ -1,6 +1,8 @@
-import { App, MarkdownRenderer, TFile } from "obsidian";
+import { App, MarkdownRenderer, Platform, TFile } from "obsidian";
 
 import SRPlugin from "src/main";
+import { MobileImagePreviewModal } from "src/ui/obsidian-ui-components/modals/mobile-image-preview-modal";
+import EmulatedPlatform from "src/utils/platform-detector";
 import { TextDirection } from "src/utils/strings";
 
 export class RenderMarkdownWrapper {
@@ -150,6 +152,7 @@ export class RenderMarkdownWrapper {
             srStableImageSrc?: string;
             srBlobFetchPromise?: Promise<void>;
             srFallbackImageSrc?: string;
+            srMobilePreviewBound?: boolean;
         };
         const preparedImage = imageEl as PreparedImage;
 
@@ -165,6 +168,19 @@ export class RenderMarkdownWrapper {
                 capture: true,
             });
             imageEl.addEventListener("error", () => this.normalizeBrokenBlobBackedImage(imageEl));
+        }
+
+        if (this.isMobilePreviewEnabled() && !preparedImage.srMobilePreviewBound) {
+            preparedImage.srMobilePreviewBound = true;
+            imageEl.addEventListener(
+                "click",
+                (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void this.openMobileImagePreview(imageEl);
+                },
+                { capture: true },
+            );
         }
 
         const currentSrc = imageEl.currentSrc || imageEl.src || "";
@@ -200,6 +216,58 @@ export class RenderMarkdownWrapper {
         }
 
         this.normalizeBrokenBlobBackedImage(imageEl);
+    }
+
+    private async openMobileImagePreview(imageEl: HTMLImageElement): Promise<void> {
+        const previewSrc = await this.resolveMobilePreviewSrc(imageEl);
+        if (!previewSrc) return;
+
+        new MobileImagePreviewModal(
+            this.app,
+            previewSrc,
+            imageEl.getAttribute("alt") || imageEl.getAttribute("aria-label") || "",
+        ).open();
+    }
+
+    private async resolveMobilePreviewSrc(
+        imageEl: HTMLImageElement,
+    ): Promise<string | null> {
+        type PreparedImage = HTMLImageElement & {
+            srStableImageSrc?: string;
+            srBlobFetchPromise?: Promise<void>;
+            srFallbackImageSrc?: string;
+        };
+        const preparedImage = imageEl as PreparedImage;
+        const currentSrc = imageEl.currentSrc || imageEl.src || "";
+
+        if (preparedImage.srStableImageSrc) {
+            return preparedImage.srStableImageSrc;
+        }
+
+        if (currentSrc && !this.isBlobSource(currentSrc)) {
+            return currentSrc;
+        }
+
+        if (this.isLiveBlobSource(currentSrc) && !preparedImage.srBlobFetchPromise) {
+            this.cacheBlobImageSource(imageEl, currentSrc);
+        }
+
+        if (preparedImage.srBlobFetchPromise) {
+            await preparedImage.srBlobFetchPromise;
+        }
+
+        if (preparedImage.srStableImageSrc) {
+            return preparedImage.srStableImageSrc;
+        }
+
+        this.normalizeBrokenBlobBackedImage(imageEl);
+        return (
+            preparedImage.srStableImageSrc ||
+            preparedImage.srFallbackImageSrc ||
+            imageEl.currentSrc ||
+            imageEl.src ||
+            null
+        );
     }
 
     private normalizeBrokenBlobBackedImage(imageEl: HTMLImageElement) {
@@ -377,5 +445,9 @@ export class RenderMarkdownWrapper {
 
     private isLiveBlobSource(src: string): boolean {
         return src.startsWith("blob:");
+    }
+
+    private isMobilePreviewEnabled(): boolean {
+        return Platform.isMobile || EmulatedPlatform().isMobile;
     }
 }
