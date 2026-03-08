@@ -169,9 +169,17 @@ export class SRModalView extends Modal {
         notePath: string,
         openInNewLeaf: boolean,
     ): Promise<void> {
-        this._minimizeToFloatingBar();
+        const isMobile = Platform.isMobile || EmulatedPlatform().isMobile;
         const file = this.app.vault.getAbstractFileByPath(notePath);
         if (!(file instanceof TFile)) return;
+
+        if (isMobile) {
+            await this.app.workspace.openLinkText(notePath, "", openInNewLeaf);
+            this._minimizeToFloatingBar();
+            return;
+        }
+
+        this._minimizeToFloatingBar();
         await this.app.workspace.getLeaf(openInNewLeaf).openFile(file);
     }
 
@@ -197,12 +205,20 @@ export class SRModalView extends Modal {
     private _renderFloatingBar(): void {
         this._removeFloatingBar();
         const summary = this.cardContainer.getFloatingBarSummary();
+        const isPhone =
+            Platform.isPhone ||
+            EmulatedPlatform().isPhone ||
+            document.body.classList.contains("is-phone");
         const bar = document.body.createDiv("sr-floating-bar");
+        if (isPhone) {
+            bar.addClass("is-compact");
+        }
         bar.setAttribute("role", "group");
         const icon = bar.createDiv("sr-floating-bar-icon");
         setIcon(icon, "panel-bottom");
         const label = bar.createDiv("sr-floating-bar-label");
-        label.setText(`${t("REVIEW_CARDS")} • ${summary.deckName}`);
+        label.setText(isPhone ? summary.deckName : `${t("REVIEW_CARDS")} • ${summary.deckName}`);
+        label.title = `${t("REVIEW_CARDS")} • ${summary.deckName}`;
         const count = bar.createDiv("sr-floating-bar-count");
         count.setText(summary.counter);
         const restoreDeckButton = bar.createEl("button", {

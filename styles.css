@@ -2586,6 +2586,7 @@ th.gridjs-th:last-child {
     cursor: grab;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     user-select: none;
+    max-width: calc(100vw - 24px);
 }
 
 .sr-floating-bar.is-dragging {
@@ -2611,13 +2612,18 @@ th.gridjs-th:last-child {
 }
 
 .sr-floating-bar-label {
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: var(--font-ui-small);
     font-weight: var(--font-semibold);
     color: var(--text-normal);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sr-floating-bar-count {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2631,6 +2637,7 @@ th.gridjs-th:last-child {
 }
 
 .sr-floating-bar-restore {
+    flex: 0 0 auto;
     margin-left: 4px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 14px;
@@ -2647,6 +2654,7 @@ th.gridjs-th:last-child {
 }
 
 .sr-floating-bar-close {
+    flex: 0 0 auto;
     margin-left: 4px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 14px;
@@ -2663,6 +2671,49 @@ th.gridjs-th:last-child {
 .sr-floating-bar-close:hover {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+.is-mobile .sr-floating-bar {
+    bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+    right: 12px;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 18px;
+    max-width: calc(100vw - 16px);
+}
+
+.is-phone .sr-floating-bar.is-compact {
+    gap: 6px;
+}
+
+.is-phone .sr-floating-bar.is-compact .sr-floating-bar-icon {
+    display: none;
+}
+
+.is-phone .sr-floating-bar.is-compact .sr-floating-bar-label {
+    max-width: 12ch;
+    font-size: var(--font-ui-smaller);
+}
+
+.is-phone .sr-floating-bar.is-compact .sr-floating-bar-count {
+    min-width: 18px;
+    padding: 1px 5px;
+    font-size: 11px;
+}
+
+.is-phone .sr-floating-bar.is-compact .sr-floating-bar-restore {
+    margin-left: 0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+}
+
+.is-phone .sr-floating-bar.is-compact .sr-floating-bar-close {
+    margin-left: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    font-size: 14px;
 }
 
 /* Collapse button in deck panel header (tab-view only) */
