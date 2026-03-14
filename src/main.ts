@@ -26,6 +26,14 @@ import {
 import { TopicPath } from "src/deck/topic-path";
 import { ISRFile, SrTFile } from "src/file";
 import { t } from "src/lang/helpers";
+import {
+    buildLegacyCommandIdMap,
+    getPluginCommandSuffixes,
+    type InternalCommandManager,
+    migrateLegacyCommandConfigs,
+    registerLegacyCommandAliases,
+    unregisterLegacyCommandAliases,
+} from "src/legacy-command-compatibility";
 import { NextNoteReviewHandler } from "src/note/next-note-review-handler";
 import { Note } from "src/note/note";
 import { NoteFileLoader } from "src/note/note-file-loader";
@@ -44,6 +52,7 @@ export default class SRPlugin extends Plugin {
     public uiManager: UIManager;
 
     public nextNoteReviewHandler: NextNoteReviewHandler;
+    private legacyCommandAliasIds: string[] = [];
 
     async onload(): Promise<void> {
         await this.loadPluginData();
@@ -76,6 +85,8 @@ export default class SRPlugin extends Plugin {
         this.uiManager = new UIManager(this);
 
         this.addPluginCommands();
+        this.enableLegacyCommandCompatibility();
+        await this.migrateLegacyCommandReferences();
         this.registerEditorContextMenuCommands();
     }
 
@@ -219,6 +230,8 @@ export default class SRPlugin extends Plugin {
     }
 
     onunload(): void {
+        unregisterLegacyCommandAliases(this.getInternalCommandManager(), this.legacyCommandAliasIds);
+        this.legacyCommandAliasIds = [];
         this.app.workspace.getLeavesOfType(REVIEW_QUEUE_VIEW_TYPE).forEach((leaf) => leaf.detach());
         this.uiManager.destroy();
     }
@@ -372,6 +385,42 @@ export default class SRPlugin extends Plugin {
     }
     async savePluginData(): Promise<void> {
         await this.saveData(this.data);
+    }
+
+    private getInternalCommandManager(): InternalCommandManager | undefined {
+        return (this.app as { commands?: InternalCommandManager }).commands;
+    }
+
+    private getLegacyCommandIdMap(): Record<string, string> {
+        const commandManager = this.getInternalCommandManager();
+        const commandSuffixes = getPluginCommandSuffixes(commandManager, this.manifest.id);
+        return buildLegacyCommandIdMap(this.manifest.id, commandSuffixes);
+    }
+
+    private enableLegacyCommandCompatibility(): void {
+        this.legacyCommandAliasIds = registerLegacyCommandAliases(
+            this.getInternalCommandManager(),
+            this.getLegacyCommandIdMap(),
+        );
+    }
+
+    private async migrateLegacyCommandReferences(): Promise<void> {
+        const migrationSummary = await migrateLegacyCommandConfigs(
+            this.app.vault.adapter,
+            this.app.vault.configDir,
+            this.getLegacyCommandIdMap(),
+        );
+
+        if (migrationSummary.updatedFiles.length > 0) {
+            console.log("SR: migrated legacy command references", migrationSummary);
+        }
+
+        if (migrationSummary.errors.length > 0) {
+            console.warn(
+                "SR: failed to migrate some legacy command references",
+                migrationSummary.errors,
+            );
+        }
     }
 
     private async convertSelectionToFlashcard(
