@@ -97,7 +97,7 @@ Cornell 用タグ:
 
 最新 release:
 
-- `1.14.0-custom.0`
+- `1.14.0-custom.10`
 - https://github.com/tk-pkm111/obsidian-spaced-repetition-custom/releases
 
 ## 元プロジェクトについて
