@@ -1,4 +1,4 @@
-import { Editor, Notice, Plugin, TFile } from "obsidian";
+import { Editor, MenuItem, Notice, Plugin, TFile } from "obsidian";
 
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
@@ -217,9 +217,8 @@ export default class SRPlugin extends Plugin {
                 const selectedText = editor.getSelection();
                 if (!selectedText || selectedText.trim().length === 0) return;
 
-                menu.addItem((item) => {
-                    item
-                        .setTitle("フラッシュカード化する")
+                menu.addItem((item: MenuItem) => {
+                    item.setTitle("フラッシュカード化する")
                         .setIcon("list-plus")
                         .onClick(async () => {
                             await this.convertSelectionToFlashcard(editor, selectedText);
@@ -230,7 +229,10 @@ export default class SRPlugin extends Plugin {
     }
 
     onunload(): void {
-        unregisterLegacyCommandAliases(this.getInternalCommandManager(), this.legacyCommandAliasIds);
+        unregisterLegacyCommandAliases(
+            this.getInternalCommandManager(),
+            this.legacyCommandAliasIds,
+        );
         this.legacyCommandAliasIds = [];
         this.app.workspace.getLeavesOfType(REVIEW_QUEUE_VIEW_TYPE).forEach((leaf) => leaf.detach());
         this.uiManager.destroy();

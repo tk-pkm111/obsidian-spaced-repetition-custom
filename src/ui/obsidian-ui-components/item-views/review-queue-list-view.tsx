@@ -1,12 +1,12 @@
 import { ItemView, Menu, Modal, Notice, TFile, WorkspaceLeaf } from "obsidian";
 
+import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { TICKS_PER_DAY } from "src/constants";
 import SRPlugin from "src/main";
 import { NextNoteReviewHandler } from "src/note/next-note-review-handler";
 import { NoteReviewDeck, SchedNote } from "src/note/note-review-deck";
 import { NoteReviewQueue } from "src/note/note-review-queue";
 import { SRSettings } from "src/settings";
-import { formatDateYYYYMMDD, globalDateProvider } from "src/utils/dates";
 
 export const REVIEW_QUEUE_VIEW_TYPE = "review-queue-list-view";
 
@@ -156,7 +156,8 @@ export class ReviewQueueListView extends ItemView {
         // Reveal Active File button
         const revealBtn = headerBtns.createDiv("sr-collapse-all-btn");
         revealBtn.setAttribute("aria-label", "アクティブファイルを表示");
-        revealBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>`;
+        revealBtn.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>';
         revealBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             this._revealActiveFile(containerEl);
@@ -222,8 +223,7 @@ export class ReviewQueueListView extends ItemView {
         progressBar.style.width = `${progressPercent}%`;
 
         // — Deck Sections —
-        const deckOrder: string[] =
-            (this.plugin?.data?.settings as any)?.deckOrder || [];
+        const deckOrder = this.plugin?.data?.settings.deckOrder ?? [];
         const deckEntries = [...this.noteReviewQueue.reviewDecks.entries()];
         deckEntries.sort((a, b) => {
             const ai = deckOrder.indexOf(a[0]);
@@ -375,7 +375,7 @@ export class ReviewQueueListView extends ItemView {
                 keys.splice(fromIdx, 1);
                 keys.splice(toIdx, 0, fromKey);
                 if (this.plugin?.data) {
-                    (this.plugin.data.settings as any).deckOrder = keys;
+                    this.plugin.data.settings.deckOrder = keys;
                     await this.plugin.savePluginData();
                 }
                 this.redraw();
@@ -397,13 +397,7 @@ export class ReviewQueueListView extends ItemView {
                 for (const sNote of groups.overdue) {
                     const fileIsOpen =
                         activeFile && sNote.note.tfile && sNote.note.path === activeFile.path;
-                    this.createNoteItem(
-                        grp,
-                        sNote.note.tfile,
-                        !!fileIsOpen,
-                        deck,
-                        deckKey,
-                    );
+                    this.createNoteItem(grp, sNote.note.tfile, !!fileIsOpen, deck, deckKey);
                 }
             }
 
@@ -421,13 +415,7 @@ export class ReviewQueueListView extends ItemView {
                 for (const sNote of groups.today) {
                     const fileIsOpen =
                         activeFile && sNote.note.tfile && sNote.note.path === activeFile.path;
-                    this.createNoteItem(
-                        grp,
-                        sNote.note.tfile,
-                        !!fileIsOpen,
-                        deck,
-                        deckKey,
-                    );
+                    this.createNoteItem(grp, sNote.note.tfile, !!fileIsOpen, deck, deckKey);
                 }
             }
 
@@ -480,26 +468,15 @@ export class ReviewQueueListView extends ItemView {
                     );
                     for (const sNote of notes) {
                         const fileIsOpen =
-                            activeFile &&
-                            sNote.note.tfile &&
-                            sNote.note.path === activeFile.path;
-                        this.createNoteItem(
-                            grp,
-                            sNote.note.tfile,
-                            !!fileIsOpen,
-                            deck,
-                            deckKey,
-                        );
+                            activeFile && sNote.note.tfile && sNote.note.path === activeFile.path;
+                        this.createNoteItem(grp, sNote.note.tfile, !!fileIsOpen, deck, deckKey);
                     }
                 }
             }
 
             // Later wrapper
             if (groups.later.size > 0) {
-                const laterTotal = [...groups.later.values()].reduce(
-                    (s, a) => s + a.length,
-                    0,
-                );
+                const laterTotal = [...groups.later.values()].reduce((s, a) => s + a.length, 0);
                 const wrapperEl = this.createGroupWrapper(
                     deckContent,
                     "来週以降",
@@ -526,16 +503,8 @@ export class ReviewQueueListView extends ItemView {
                     );
                     for (const sNote of notes) {
                         const fileIsOpen =
-                            activeFile &&
-                            sNote.note.tfile &&
-                            sNote.note.path === activeFile.path;
-                        this.createNoteItem(
-                            grp,
-                            sNote.note.tfile,
-                            !!fileIsOpen,
-                            deck,
-                            deckKey,
-                        );
+                            activeFile && sNote.note.tfile && sNote.note.path === activeFile.path;
+                        this.createNoteItem(grp, sNote.note.tfile, !!fileIsOpen, deck, deckKey);
                     }
                 }
             }
@@ -557,10 +526,10 @@ export class ReviewQueueListView extends ItemView {
             folderId === "overdue"
                 ? "sr-time-group-overdue"
                 : folderId === "today"
-                    ? "sr-time-group-today"
-                    : folderId === "new"
-                        ? "sr-time-group-new"
-                        : "sr-time-group-week";
+                  ? "sr-time-group-today"
+                  : folderId === "new"
+                    ? "sr-time-group-new"
+                    : "sr-time-group-week";
         const groupEl = parentEl.createDiv(`sr-time-group ${colorClass}`);
         if (collapsed) groupEl.addClass("sr-collapsed");
 
@@ -577,8 +546,7 @@ export class ReviewQueueListView extends ItemView {
             const willCollapse = !groupEl.hasClass("sr-collapsed");
             groupEl.toggleClass("sr-collapsed", willCollapse);
             childrenEl.style.display = willCollapse ? "none" : "";
-            if (!this._userToggles.has(deckKey))
-                this._userToggles.set(deckKey, new Set());
+            if (!this._userToggles.has(deckKey)) this._userToggles.set(deckKey, new Set());
             if (willCollapse) {
                 deck.activeFolders.delete(folderId);
                 this._userToggles.get(deckKey)!.delete(folderId);
@@ -616,8 +584,7 @@ export class ReviewQueueListView extends ItemView {
             const willCollapse = !wrapperEl.hasClass("sr-collapsed");
             wrapperEl.toggleClass("sr-collapsed", willCollapse);
             childrenEl.style.display = willCollapse ? "none" : "";
-            if (!this._userToggles.has(deckKey))
-                this._userToggles.set(deckKey, new Set());
+            if (!this._userToggles.has(deckKey)) this._userToggles.set(deckKey, new Set());
             if (willCollapse) {
                 deck.activeFolders.delete(wrapperId);
                 this._userToggles.get(deckKey)!.delete(wrapperId);
@@ -649,15 +616,21 @@ export class ReviewQueueListView extends ItemView {
         if (deckKey) {
             const actionBar = itemEl.createDiv("sr-note-action-bar");
 
-            // Reschedule buttons
-            for (const days of [1, 3, 7]) {
-                const reschedBtn = actionBar.createDiv("sr-note-resched-btn");
-                reschedBtn.setText(`${days}`);
-                reschedBtn.setAttribute("aria-label", `${days}日後にリスケ`);
-                reschedBtn.addEventListener("click", async (e) => {
+            // Review buttons — 正規のSRSアルゴリズムを通す (短く=Hard / スキップ=Good / 長く=Easy)
+            // 幅が狭いので表示は漢字1文字、フル文言は aria-label (ツールチップ) に出す
+            const reviewButtons: { label: string; tooltip: string; response: ReviewResponse }[] = [
+                { label: "短", tooltip: "短く", response: ReviewResponse.Hard },
+                { label: "飛", tooltip: "スキップ", response: ReviewResponse.Good },
+                { label: "長", tooltip: "長く", response: ReviewResponse.Easy },
+            ];
+            for (const { label, tooltip, response } of reviewButtons) {
+                const reviewBtn = actionBar.createDiv("sr-note-resched-btn");
+                reviewBtn.setText(label);
+                reviewBtn.setAttribute("aria-label", tooltip);
+                reviewBtn.addEventListener("click", async (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    await this.rescheduleNote(file, days, itemEl);
+                    await this.reviewNote(file, response, itemEl);
                 });
             }
 
@@ -689,28 +662,20 @@ export class ReviewQueueListView extends ItemView {
         });
     }
 
-    // ─── Reschedule ───
-    private async rescheduleNote(file: TFile, days: number, itemEl: HTMLElement): Promise<void> {
-        const newDue = new Date();
-        newDue.setDate(newDue.getDate() + days);
-        const dueStr = formatDateYYYYMMDD(
-            globalDateProvider.today.add(days, "days"),
-        );
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await this.app.fileManager.processFrontMatter(file, (fm: any) => {
-            fm["sr-due"] = dueStr;
-            fm["sr-interval"] = days;
-            if (!fm["sr-ease"]) fm["sr-ease"] = this.settings.baseEase;
-        });
+    // ─── Review (正規のSRSアルゴリズムでスケジュール更新) ───
+    private async reviewNote(
+        file: TFile,
+        response: ReviewResponse,
+        itemEl: HTMLElement,
+    ): Promise<void> {
+        // ease に応じて間隔が伸びる本来の挙動を通す (固定リスケはしない)
+        await this.plugin.saveNoteReviewResponse(file, response);
 
         itemEl.addClass("sr-note-removing");
         setTimeout(() => {
             itemEl.remove();
             this._updateGroupBadges();
         }, 200);
-
-        new Notice(`📅 ${file.basename} → ${days}日後`);
     }
 
     // ─── Remove from review ───
@@ -736,9 +701,7 @@ export class ReviewQueueListView extends ItemView {
         await this.app.fileManager.processFrontMatter(file, (frontmatter: any) => {
             if (frontmatter.tags) {
                 if (Array.isArray(frontmatter.tags)) {
-                    frontmatter.tags = frontmatter.tags.filter(
-                        (t: string) => !reviewTags.has(t),
-                    );
+                    frontmatter.tags = frontmatter.tags.filter((t: string) => !reviewTags.has(t));
                     if (frontmatter.tags.length === 0) delete frontmatter.tags;
                 } else if (typeof frontmatter.tags === "string") {
                     if (reviewTags.has(frontmatter.tags)) delete frontmatter.tags;
